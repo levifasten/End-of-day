@@ -11,27 +11,39 @@
             font-family: 'Inter', sans-serif; 
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         }
-        .mono-font { font-family: 'JetBrains Mono', monospace; }
         
-        /* Ultra High Contrast Inputs */
+        /* FORCE INPUT COLOR TO BLACK */
         .super-input { 
-            @apply w-full bg-white text-black font-extrabold border-2 border-transparent rounded-lg px-4 py-4 text-2xl shadow-lg transition-all;
-            /* Remove default number spinner */
-            -moz-appearance: textfield;
+            background-color: #ffffff !important;
+            color: #000000 !important; /* Pure Black Text */
+            font-weight: 800 !important; /* Extra Bold */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            width: 100%;
+            font-size: 1.5rem; /* Large Text */
+            border: 2px solid transparent;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            -moz-appearance: textfield; /* Remove spinner */
         }
+        
+        /* Remove webkit spinners */
         .super-input::-webkit-outer-spin-button,
         .super-input::-webkit-inner-spin-button {
             -webkit-appearance: none;
             margin: 0;
         }
+        
         .super-input:focus {
-            @apply outline-none ring-4 ring-blue-500/50 border-blue-500 transform scale-[1.02];
-        }
-        .super-input::placeholder {
-            @apply text-gray-300 font-bold;
+            outline: none;
+            border-color: #3b82f6; /* Blue border on focus */
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
         }
         
-        /* Card Glass Effect */
+        .super-input::placeholder {
+            color: #9ca3af !important; /* Light grey ONLY for placeholder */
+            font-weight: 600;
+        }
+
         .glass-card {
             background: rgba(30, 41, 59, 0.7);
             backdrop-filter: blur(12px);
@@ -55,8 +67,9 @@
             <div class="space-y-2">
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Risk Amount ($)</label>
                 <div class="relative">
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xl">$</span>
-                    <input type="number" id="riskValue" class="super-input pl-8" placeholder="500" value="950">
+                    <!-- Dollar sign kept outside the input to avoid text overlap issues -->
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-800 font-extrabold text-xl z-10 pointer-events-none">$</span>
+                    <input type="number" id="riskValue" class="super-input pl-10" placeholder="500" value="950">
                 </div>
             </div>
 
@@ -133,17 +146,10 @@
         </div>
     </div>
 
-    <!-- Hidden Input for Logic -->
-    <input type="hidden" id="apiKeyInput">
-
     <script>
         // --- CONFIGURATION ---
         const HARDCODED_KEY = "d52cn01r01qhp11u96b0d52cn01r01qhp11u96bg"; 
         // ---------------------
-
-        function saveKey() {
-            // Placeholder for compatibility
-        }
 
         async function calculate() {
             const ticker = document.getElementById('ticker').value.toUpperCase();
