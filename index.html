@@ -97,14 +97,14 @@
     <script>
         // --- CONFIGURATION ---
         // PASTE YOUR API KEY HERE BETWEEN THE QUOTES
-        const HARDCODED_KEY = "PASTE_YOUR_KEY_HERE"; 
+        const HARDCODED_KEY = "d52cn01r01qhp11u96b0d52cn01r01qhp11u96bg"; 
         // ---------------------
 
         // Check for saved key or hardcoded key
         const savedKey = localStorage.getItem('finnhub_key');
         
         // Only show input field if no key is found anywhere
-        if (!savedKey && (!HARDCODED_KEY || HARDCODED_KEY === d52cn01r01qhp11u96b0d52cn01r01qhp11u96bg)) {
+        if (!savedKey && (!HARDCODED_KEY || HARDCODED_KEY === "d52cn01r01qhp11u96b0d52cn01r01qhp11u96bg")) {
             document.getElementById('apiKeySection').classList.remove('hidden');
         }
 
@@ -124,7 +124,7 @@
             
             // Priority: Local Storage -> Hardcoded Key -> Input Field
             let apiKey = localStorage.getItem('finnhub_key');
-            if (!apiKey && HARDCODED_KEY && HARDCODED_KEY !== d52cn01r01qhp11u96b0d52cn01r01qhp11u96bg) {
+            if (!apiKey && HARDCODED_KEY && HARDCODED_KEY !== "d52cn01r01qhp11u96b0d52cn01r01qhp11u96bg") {
                 apiKey = HARDCODED_KEY;
             } else if (!apiKey) {
                 apiKey = document.getElementById('apiKeyInput').value;
