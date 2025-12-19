@@ -10,7 +10,10 @@
         body { font-family: 'Inter', sans-serif; }
         .input-group { @apply flex flex-col space-y-1; }
         .input-label { @apply text-sm font-medium text-gray-400; }
-        .input-field { @apply w-full bg-gray-700 text-white border border-gray-600 rounded px-3 py-2 focus:outline-none focus:border-blue-500 transition-colors; }
+        /* High contrast inputs: White background, Black text */
+        .input-field { 
+            @apply w-full bg-white text-black font-bold border border-gray-400 rounded px-3 py-3 text-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition-colors; 
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen flex items-center justify-center p-4">
@@ -18,60 +21,53 @@
     <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-700">
         <div class="bg-gray-800 p-6 border-b border-gray-700">
             <h1 class="text-2xl font-bold text-white">Position Size Calc</h1>
-            <p class="text-gray-400 text-sm mt-1">Risk management based on daily range</p>
+            <p class="text-gray-400 text-sm mt-1">Dollar Risk Method</p>
         </div>
 
-        <!-- API Key Input Section (Hidden by default if hardcoded key exists) -->
+        <!-- API Key Input Section (Hidden because key is hardcoded) -->
         <div id="apiKeySection" class="hidden p-4 bg-blue-900/30 border-b border-blue-900/50 text-sm text-blue-200">
             <label class="block mb-2 font-semibold">Enter Finnhub API Key:</label>
             <div class="flex gap-2">
-                <input type="password" id="apiKeyInput" placeholder="Paste key here" class="input-field">
+                <input type="password" id="apiKeyInput" placeholder="Paste key here" class="w-full bg-gray-700 text-white border border-gray-600 rounded px-3 py-2">
                 <button onclick="saveKey()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-medium transition-colors">Save</button>
             </div>
-            <p class="text-xs mt-2 text-gray-400">Get a free key at <a href="https://finnhub.io/" target="_blank" class="underline hover:text-white">finnhub.io</a></p>
         </div>
 
         <div class="p-6 space-y-6">
-            <div class="grid grid-cols-2 gap-4">
-                <div class="input-group">
-                    <label class="input-label">Account Value ($)</label>
-                    <input type="number" id="accountValue" class="input-field" placeholder="10000" value="10000">
-                </div>
-                
-                <div class="input-group">
-                    <label class="input-label">Risk</label>
-                    <div class="flex">
-                        <input type="number" id="riskValue" class="input-field rounded-r-none border-r-0" placeholder="1" value="1">
-                        <select id="riskType" class="bg-gray-600 text-white border border-gray-600 rounded-l-none px-2 focus:outline-none cursor-pointer">
-                            <option value="percent">%</option>
-                            <option value="fixed">$</option>
-                        </select>
-                    </div>
-                </div>
+            <!-- Risk Input (Dollar Amount Only) -->
+            <div class="input-group">
+                <label class="input-label">Risk Amount ($)</label>
+                <input type="number" id="riskValue" class="input-field" placeholder="Example: 950" value="950">
             </div>
 
+            <!-- Ticker Input -->
             <div class="input-group relative">
                 <label class="input-label">Ticker Symbol</label>
                 <div class="flex gap-2">
-                    <input type="text" id="ticker" class="input-field uppercase font-bold tracking-wider" placeholder="AAPL" onkeydown="if(event.key === 'Enter') calculate()">
+                    <input type="text" id="ticker" class="input-field uppercase tracking-wider" placeholder="AAPL" onkeydown="if(event.key === 'Enter') calculate()">
                     <button onclick="calculate()" id="calcBtn" class="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded font-bold shadow-lg transition-all transform hover:scale-105">GO</button>
                 </div>
                 <p id="errorMsg" class="text-red-400 text-xs mt-2 hidden"></p>
             </div>
 
+            <!-- Results Section -->
             <div id="results" class="hidden space-y-4 animate-fade-in">
+                <!-- Market Data -->
                 <div class="flex justify-between text-xs text-gray-400 bg-gray-700/50 p-3 rounded">
                     <span>Current: <strong id="priceCurrent" class="text-white text-sm">--</strong></span>
                     <span>High: <strong id="priceHigh" class="text-white text-sm">--</strong></span>
                     <span>Low: <strong id="priceLow" class="text-white text-sm">--</strong></span>
                 </div>
 
+                <!-- Risk Display -->
                 <div class="text-center pb-2 border-b border-gray-700">
                     <span class="text-gray-400 text-sm">Total Risk: </span>
                     <span id="riskDisplay" class="text-xl font-bold text-white">--</span>
                 </div>
 
+                <!-- Long/Short Cards -->
                 <div class="grid grid-cols-2 gap-4">
+                    <!-- Long Card -->
                     <div class="bg-green-900/20 border border-green-800/50 rounded-lg p-4 flex flex-col items-center">
                         <span class="text-green-400 font-bold uppercase text-sm mb-1">LONG</span>
                         <div class="text-3xl font-bold text-white mb-1" id="longShares">0</div>
@@ -81,6 +77,7 @@
                         </div>
                     </div>
 
+                    <!-- Short Card -->
                     <div class="bg-red-900/20 border border-red-800/50 rounded-lg p-4 flex flex-col items-center">
                         <span class="text-red-400 font-bold uppercase text-sm mb-1">SHORT</span>
                         <div class="text-3xl font-bold text-white mb-1" id="shortShares">0</div>
@@ -96,17 +93,8 @@
 
     <script>
         // --- CONFIGURATION ---
-        // PASTE YOUR API KEY HERE BETWEEN THE QUOTES
         const HARDCODED_KEY = "d52cn01r01qhp11u96b0d52cn01r01qhp11u96bg"; 
         // ---------------------
-
-        // Check for saved key or hardcoded key
-        const savedKey = localStorage.getItem('finnhub_key');
-        
-        // Only show input field if no key is found anywhere
-        if (!savedKey && (!HARDCODED_KEY || HARDCODED_KEY === "d52cn01r01qhp11u96b0d52cn01r01qhp11u96bg")) {
-            document.getElementById('apiKeySection').classList.remove('hidden');
-        }
 
         function saveKey() {
             const key = document.getElementById('apiKeyInput').value;
@@ -118,23 +106,21 @@
 
         async function calculate() {
             const ticker = document.getElementById('ticker').value.toUpperCase();
-            const account = parseFloat(document.getElementById('accountValue').value);
+            // Directly use the Dollar Risk Value
             const riskVal = parseFloat(document.getElementById('riskValue').value);
-            const riskType = document.getElementById('riskType').value;
             
-            // Priority: Local Storage -> Hardcoded Key -> Input Field
+            // Priority: Local Storage -> Hardcoded Key
             let apiKey = localStorage.getItem('finnhub_key');
-            if (!apiKey && HARDCODED_KEY && HARDCODED_KEY !== "d52cn01r01qhp11u96b0d52cn01r01qhp11u96bg") {
+            if (!apiKey && HARDCODED_KEY) {
                 apiKey = HARDCODED_KEY;
-            } else if (!apiKey) {
-                apiKey = document.getElementById('apiKeyInput').value;
             }
             
             const btn = document.getElementById('calcBtn');
             const errorMsg = document.getElementById('errorMsg');
             
+            // Basic validation
             if (!apiKey) {
-                alert("Please enter a Finnhub API Key or add it to the code.");
+                alert("API Key missing.");
                 return;
             }
 
@@ -158,35 +144,38 @@
                 const high = data.h;
                 const low = data.l;
 
-                let riskAmount = 0;
-                if (riskType === 'percent') {
-                    riskAmount = account * (riskVal / 100);
-                } else {
-                    riskAmount = riskVal;
-                }
+                // Risk is simply the value entered
+                const riskAmount = riskVal;
 
+                // LONG: Buy @ Current, Stop @ Low
                 const riskPerShareLong = current - low;
                 let sharesLong = 0;
+                // Avoid division by zero if price hasn't moved
                 if (riskPerShareLong > 0) {
                     sharesLong = Math.floor(riskAmount / riskPerShareLong);
+                } else {
+                    sharesLong = "N/A";
                 }
 
+                // SHORT: Sell @ Current, Stop @ High
                 const riskPerShareShort = high - current;
                 let sharesShort = 0;
                 if (riskPerShareShort > 0) {
                     sharesShort = Math.floor(riskAmount / riskPerShareShort);
+                } else {
+                    sharesShort = "N/A";
                 }
 
                 document.getElementById('priceCurrent').innerText = current.toFixed(2);
                 document.getElementById('priceHigh').innerText = high.toFixed(2);
                 document.getElementById('priceLow').innerText = low.toFixed(2);
                 
-                document.getElementById('riskDisplay').innerText = "$" + riskAmount.toFixed(2);
+                document.getElementById('riskDisplay').innerText = "$" + riskAmount.toLocaleString();
                 
-                document.getElementById('longShares').innerText = sharesLong.toLocaleString();
+                document.getElementById('longShares').innerText = typeof sharesLong === 'number' ? sharesLong.toLocaleString() : sharesLong;
                 document.getElementById('longStop').innerText = low.toFixed(2);
                 
-                document.getElementById('shortShares').innerText = sharesShort.toLocaleString();
+                document.getElementById('shortShares').innerText = typeof sharesShort === 'number' ? sharesShort.toLocaleString() : sharesShort;
                 document.getElementById('shortStop').innerText = high.toFixed(2);
 
                 document.getElementById('results').classList.remove('hidden');
