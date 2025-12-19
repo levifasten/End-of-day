@@ -3,87 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Risk & Position Size Calculator</title>
+    <title>Position Size Calculator</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .input-group { @apply flex flex-col space-y-1; }
-        .input-label { @apply text-sm font-medium text-gray-400; }
-        /* High contrast inputs: White background, Black text */
-        .input-field { 
-            @apply w-full bg-white text-black font-bold border border-gray-400 rounded px-3 py-3 text-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition-colors; 
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+        .mono-font { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Ultra High Contrast Inputs */
+        .super-input { 
+            @apply w-full bg-white text-black font-extrabold border-2 border-transparent rounded-lg px-4 py-4 text-2xl shadow-lg transition-all;
+            /* Remove default number spinner */
+            -moz-appearance: textfield;
+        }
+        .super-input::-webkit-outer-spin-button,
+        .super-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .super-input:focus {
+            @apply outline-none ring-4 ring-blue-500/50 border-blue-500 transform scale-[1.02];
+        }
+        .super-input::placeholder {
+            @apply text-gray-300 font-bold;
+        }
+        
+        /* Card Glass Effect */
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen flex items-center justify-center p-4">
+<body class="min-h-screen flex items-center justify-center p-4 text-gray-100">
 
-    <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-700">
-        <div class="bg-gray-800 p-6 border-b border-gray-700">
-            <h1 class="text-2xl font-bold text-white">Position Size Calc</h1>
-            <p class="text-gray-400 text-sm mt-1">Dollar Risk Method</p>
-        </div>
-
-        <!-- API Key Input Section (Hidden because key is hardcoded) -->
-        <div id="apiKeySection" class="hidden p-4 bg-blue-900/30 border-b border-blue-900/50 text-sm text-blue-200">
-            <label class="block mb-2 font-semibold">Enter Finnhub API Key:</label>
-            <div class="flex gap-2">
-                <input type="password" id="apiKeyInput" placeholder="Paste key here" class="w-full bg-gray-700 text-white border border-gray-600 rounded px-3 py-2">
-                <button onclick="saveKey()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-medium transition-colors">Save</button>
-            </div>
+    <div class="glass-card rounded-2xl shadow-2xl w-full max-w-md overflow-hidden ring-1 ring-white/10">
+        
+        <!-- Header -->
+        <div class="bg-slate-900/50 p-6 border-b border-white/10 text-center">
+            <h1 class="text-2xl font-black tracking-tight text-white uppercase">Position Size</h1>
+            <p class="text-blue-400 text-xs font-bold tracking-widest uppercase mt-1">Risk Management Tool</p>
         </div>
 
         <div class="p-6 space-y-6">
-            <!-- Risk Input (Dollar Amount Only) -->
-            <div class="input-group">
-                <label class="input-label">Risk Amount ($)</label>
-                <input type="number" id="riskValue" class="input-field" placeholder="Example: 950" value="950">
+            
+            <!-- Risk Input -->
+            <div class="space-y-2">
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Risk Amount ($)</label>
+                <div class="relative">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xl">$</span>
+                    <input type="number" id="riskValue" class="super-input pl-8" placeholder="500" value="950">
+                </div>
             </div>
 
             <!-- Ticker Input -->
-            <div class="input-group relative">
-                <label class="input-label">Ticker Symbol</label>
-                <div class="flex gap-2">
-                    <input type="text" id="ticker" class="input-field uppercase tracking-wider" placeholder="AAPL" onkeydown="if(event.key === 'Enter') calculate()">
-                    <button onclick="calculate()" id="calcBtn" class="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded font-bold shadow-lg transition-all transform hover:scale-105">GO</button>
+            <div class="space-y-2">
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Ticker Symbol</label>
+                <div class="flex gap-3">
+                    <input type="text" id="ticker" class="super-input uppercase tracking-widest text-center" placeholder="AAPL" onkeydown="if(event.key === 'Enter') calculate()">
+                    
+                    <button onclick="calculate()" id="calcBtn" class="bg-gradient-to-br from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white px-6 rounded-lg font-black text-xl shadow-lg shadow-green-900/50 transition-all active:scale-95 min-w-[80px]">
+                        GO
+                    </button>
                 </div>
-                <p id="errorMsg" class="text-red-400 text-xs mt-2 hidden"></p>
+                <p id="errorMsg" class="text-red-400 font-bold text-sm mt-2 text-center bg-red-900/20 py-2 rounded hidden"></p>
             </div>
 
             <!-- Results Section -->
-            <div id="results" class="hidden space-y-4 animate-fade-in">
-                <!-- Market Data -->
-                <div class="flex justify-between text-xs text-gray-400 bg-gray-700/50 p-3 rounded">
-                    <span>Current: <strong id="priceCurrent" class="text-white text-sm">--</strong></span>
-                    <span>High: <strong id="priceHigh" class="text-white text-sm">--</strong></span>
-                    <span>Low: <strong id="priceLow" class="text-white text-sm">--</strong></span>
+            <div id="results" class="hidden space-y-5 pt-4 border-t border-white/10 animate-fade-in">
+                
+                <!-- Market Data Pill -->
+                <div class="flex justify-between items-center bg-slate-900/80 p-3 rounded-lg border border-white/5 text-xs font-mono">
+                    <div class="text-center w-1/3 border-r border-white/10">
+                        <div class="text-gray-500 mb-1">CURRENT</div>
+                        <div id="priceCurrent" class="text-white font-bold text-lg">--</div>
+                    </div>
+                    <div class="text-center w-1/3 border-r border-white/10">
+                        <div class="text-gray-500 mb-1">HIGH</div>
+                        <div id="priceHigh" class="text-green-400 font-bold text-lg">--</div>
+                    </div>
+                    <div class="text-center w-1/3">
+                        <div class="text-gray-500 mb-1">LOW</div>
+                        <div id="priceLow" class="text-red-400 font-bold text-lg">--</div>
+                    </div>
                 </div>
 
-                <!-- Risk Display -->
-                <div class="text-center pb-2 border-b border-gray-700">
-                    <span class="text-gray-400 text-sm">Total Risk: </span>
-                    <span id="riskDisplay" class="text-xl font-bold text-white">--</span>
+                <!-- Total Risk Display -->
+                <div class="flex justify-between items-center px-2">
+                    <span class="text-gray-400 text-xs font-bold uppercase tracking-wider">Calculated Risk</span>
+                    <span id="riskDisplay" class="text-white font-mono font-bold text-lg">--</span>
                 </div>
 
-                <!-- Long/Short Cards -->
+                <!-- Long/Short Result Cards -->
                 <div class="grid grid-cols-2 gap-4">
+                    
                     <!-- Long Card -->
-                    <div class="bg-green-900/20 border border-green-800/50 rounded-lg p-4 flex flex-col items-center">
-                        <span class="text-green-400 font-bold uppercase text-sm mb-1">LONG</span>
-                        <div class="text-3xl font-bold text-white mb-1" id="longShares">0</div>
-                        <span class="text-xs text-green-300/70 uppercase tracking-wide">Shares</span>
-                        <div class="mt-3 text-xs text-gray-400 w-full text-center border-t border-green-800/30 pt-2">
-                            Stop: <span id="longStop" class="text-white">--</span>
+                    <div class="relative overflow-hidden bg-emerald-900/30 border border-emerald-500/30 rounded-xl p-4 flex flex-col items-center group hover:bg-emerald-900/40 transition-colors">
+                        <div class="absolute top-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-green-400"></div>
+                        <span class="text-emerald-400 font-black uppercase text-sm mb-2 tracking-widest">LONG</span>
+                        
+                        <div class="font-mono text-4xl font-black text-white mb-1 drop-shadow-lg" id="longShares">0</div>
+                        <span class="text-[10px] text-emerald-200/60 uppercase font-bold tracking-widest mb-4">Shares</span>
+                        
+                        <div class="w-full bg-slate-900/50 rounded py-2 text-center border border-white/5">
+                            <div class="text-[10px] text-gray-500 uppercase font-bold">Stop Loss</div>
+                            <div id="longStop" class="text-emerald-400 font-mono font-bold">--</div>
                         </div>
                     </div>
 
                     <!-- Short Card -->
-                    <div class="bg-red-900/20 border border-red-800/50 rounded-lg p-4 flex flex-col items-center">
-                        <span class="text-red-400 font-bold uppercase text-sm mb-1">SHORT</span>
-                        <div class="text-3xl font-bold text-white mb-1" id="shortShares">0</div>
-                        <span class="text-xs text-red-300/70 uppercase tracking-wide">Shares</span>
-                        <div class="mt-3 text-xs text-gray-400 w-full text-center border-t border-red-800/30 pt-2">
-                            Stop: <span id="shortStop" class="text-white">--</span>
+                    <div class="relative overflow-hidden bg-rose-900/30 border border-rose-500/30 rounded-xl p-4 flex flex-col items-center group hover:bg-rose-900/40 transition-colors">
+                        <div class="absolute top-0 w-full h-1 bg-gradient-to-r from-rose-500 to-red-400"></div>
+                        <span class="text-rose-400 font-black uppercase text-sm mb-2 tracking-widest">SHORT</span>
+                        
+                        <div class="font-mono text-4xl font-black text-white mb-1 drop-shadow-lg" id="shortShares">0</div>
+                        <span class="text-[10px] text-rose-200/60 uppercase font-bold tracking-widest mb-4">Shares</span>
+                        
+                        <div class="w-full bg-slate-900/50 rounded py-2 text-center border border-white/5">
+                            <div class="text-[10px] text-gray-500 uppercase font-bold">Stop Loss</div>
+                            <div id="shortStop" class="text-rose-400 font-mono font-bold">--</div>
                         </div>
                     </div>
                 </div>
@@ -91,25 +133,23 @@
         </div>
     </div>
 
+    <!-- Hidden Input for Logic -->
+    <input type="hidden" id="apiKeyInput">
+
     <script>
         // --- CONFIGURATION ---
         const HARDCODED_KEY = "d52cn01r01qhp11u96b0d52cn01r01qhp11u96bg"; 
         // ---------------------
 
         function saveKey() {
-            const key = document.getElementById('apiKeyInput').value;
-            if (key) {
-                localStorage.setItem('finnhub_key', key);
-                document.getElementById('apiKeySection').classList.add('hidden');
-            }
+            // Placeholder for compatibility
         }
 
         async function calculate() {
             const ticker = document.getElementById('ticker').value.toUpperCase();
-            // Directly use the Dollar Risk Value
             const riskVal = parseFloat(document.getElementById('riskValue').value);
             
-            // Priority: Local Storage -> Hardcoded Key
+            // API Key Logic
             let apiKey = localStorage.getItem('finnhub_key');
             if (!apiKey && HARDCODED_KEY) {
                 apiKey = HARDCODED_KEY;
@@ -118,46 +158,45 @@
             const btn = document.getElementById('calcBtn');
             const errorMsg = document.getElementById('errorMsg');
             
-            // Basic validation
             if (!apiKey) {
-                alert("API Key missing.");
+                errorMsg.innerText = "API Key Missing";
+                errorMsg.classList.remove('hidden');
                 return;
             }
 
+            // Reset UI
             errorMsg.classList.add('hidden');
-            btn.innerText = "...";
+            const originalBtnText = btn.innerText;
+            btn.innerHTML = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
             
             try {
                 const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`);
                 
                 if (response.status === 429) {
-                    throw new Error("Rate limit reached. Please wait a minute.");
+                    throw new Error("Rate limit. Wait 60s.");
                 }
 
                 const data = await response.json();
 
                 if (data.c === 0 && data.d === null) {
-                    throw new Error("Ticker not found.");
+                    throw new Error("Invalid Ticker");
                 }
 
                 const current = data.c;
                 const high = data.h;
                 const low = data.l;
-
-                // Risk is simply the value entered
                 const riskAmount = riskVal;
 
-                // LONG: Buy @ Current, Stop @ Low
+                // LONG CALC
                 const riskPerShareLong = current - low;
                 let sharesLong = 0;
-                // Avoid division by zero if price hasn't moved
                 if (riskPerShareLong > 0) {
                     sharesLong = Math.floor(riskAmount / riskPerShareLong);
                 } else {
                     sharesLong = "N/A";
                 }
 
-                // SHORT: Sell @ Current, Stop @ High
+                // SHORT CALC
                 const riskPerShareShort = high - current;
                 let sharesShort = 0;
                 if (riskPerShareShort > 0) {
@@ -166,10 +205,10 @@
                     sharesShort = "N/A";
                 }
 
+                // Render Results
                 document.getElementById('priceCurrent').innerText = current.toFixed(2);
                 document.getElementById('priceHigh').innerText = high.toFixed(2);
                 document.getElementById('priceLow').innerText = low.toFixed(2);
-                
                 document.getElementById('riskDisplay').innerText = "$" + riskAmount.toLocaleString();
                 
                 document.getElementById('longShares').innerText = typeof sharesLong === 'number' ? sharesLong.toLocaleString() : sharesLong;
@@ -182,10 +221,10 @@
 
             } catch (err) {
                 console.error(err);
-                errorMsg.innerText = "Error: " + err.message;
+                errorMsg.innerText = err.message;
                 errorMsg.classList.remove('hidden');
             } finally {
-                btn.innerText = "GO";
+                btn.innerHTML = originalBtnText;
             }
         }
     </script>
