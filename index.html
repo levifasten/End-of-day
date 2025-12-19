@@ -26,7 +26,6 @@
             -moz-appearance: textfield; /* Remove spinner */
         }
         
-        /* Remove webkit spinners */
         .super-input::-webkit-outer-spin-button,
         .super-input::-webkit-inner-spin-button {
             -webkit-appearance: none;
@@ -35,12 +34,12 @@
         
         .super-input:focus {
             outline: none;
-            border-color: #3b82f6; /* Blue border on focus */
+            border-color: #3b82f6;
             box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
         }
         
         .super-input::placeholder {
-            color: #9ca3af !important; /* Light grey ONLY for placeholder */
+            color: #9ca3af !important;
             font-weight: 600;
         }
 
@@ -67,7 +66,6 @@
             <div class="space-y-2">
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Risk Amount ($)</label>
                 <div class="relative">
-                    <!-- Dollar sign kept outside the input to avoid text overlap issues -->
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-800 font-extrabold text-xl z-10 pointer-events-none">$</span>
                     <input type="number" id="riskValue" class="super-input pl-10" placeholder="500" value="950">
                 </div>
@@ -193,8 +191,12 @@
                 const low = data.l;
                 const riskAmount = riskVal;
 
+                // --- 1 CENT BUFFER LOGIC ---
+                const longStopPrice = low - 0.01;
+                const shortStopPrice = high + 0.01;
+
                 // LONG CALC
-                const riskPerShareLong = current - low;
+                const riskPerShareLong = current - longStopPrice;
                 let sharesLong = 0;
                 if (riskPerShareLong > 0) {
                     sharesLong = Math.floor(riskAmount / riskPerShareLong);
@@ -203,7 +205,7 @@
                 }
 
                 // SHORT CALC
-                const riskPerShareShort = high - current;
+                const riskPerShareShort = shortStopPrice - current;
                 let sharesShort = 0;
                 if (riskPerShareShort > 0) {
                     sharesShort = Math.floor(riskAmount / riskPerShareShort);
@@ -218,10 +220,10 @@
                 document.getElementById('riskDisplay').innerText = "$" + riskAmount.toLocaleString();
                 
                 document.getElementById('longShares').innerText = typeof sharesLong === 'number' ? sharesLong.toLocaleString() : sharesLong;
-                document.getElementById('longStop').innerText = low.toFixed(2);
+                document.getElementById('longStop').innerText = longStopPrice.toFixed(2);
                 
                 document.getElementById('shortShares').innerText = typeof sharesShort === 'number' ? sharesShort.toLocaleString() : sharesShort;
-                document.getElementById('shortStop').innerText = high.toFixed(2);
+                document.getElementById('shortStop').innerText = shortStopPrice.toFixed(2);
 
                 document.getElementById('results').classList.remove('hidden');
 
@@ -235,4 +237,4 @@
         }
     </script>
 </body>
-</html>
+                    </html>
