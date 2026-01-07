@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Ticker Position Calc</title>
+    <title>Pro Position Calc</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
@@ -11,12 +11,10 @@
             font-family: 'Inter', sans-serif; 
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         }
-        
-        /* FORCE INPUT COLOR TO BLACK */
         .super-input { 
             background-color: #ffffff !important;
-            color: #000000 !important; /* Pure Black Text */
-            font-weight: 800 !important; /* Extra Bold */
+            color: #000000 !important;
+            font-weight: 800 !important;
             border-radius: 0.5rem;
             padding: 0.75rem;
             width: 100%;
@@ -26,32 +24,39 @@
             text-align: center;
             text-transform: uppercase;
         }
-        
         .super-input:focus {
             outline: none;
             border-color: #3b82f6;
             box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
         }
-        
         .super-input::placeholder {
             color: #d1d5db !important;
             font-weight: 600;
             text-transform: none;
         }
-
-        .risk-input {
-            font-size: 1.5rem; /* Larger for Risk */
-            padding-left: 2.5rem; /* Space for $ sign */
-            text-align: left;
+        .trigger-input {
+            font-size: 0.875rem;
+            padding: 0.5rem;
+            background-color: #1e293b !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            border: 1px solid #374151 !important;
         }
-
+        .trigger-input::placeholder {
+            color: #6b7280 !important;
+            font-weight: 500 !important;
+        }
+        .risk-input {
+            font-size: 1.5rem;
+            text-align: center;
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
         .glass-card {
             background: rgba(30, 41, 59, 0.7);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-
-        /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -59,148 +64,290 @@
         .animate-fade-in {
             animation: fadeIn 0.4s ease-out forwards;
         }
+        .trigger-met {
+            border: 2px solid #10b981 !important;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4) !important;
+        }
+        .trigger-met-short {
+            border: 2px solid #ef4444 !important;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4) !important;
+        }
+        .not-triggered {
+            opacity: 0.4;
+            filter: grayscale(50%);
+        }
+        .api-selector {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 text-gray-100 flex flex-col items-center">
 
     <div class="glass-card rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden ring-1 ring-white/10 mb-8">
-        
-        <!-- Header -->
         <div class="bg-slate-900/50 p-6 border-b border-white/10 text-center">
-            <h1 class="text-2xl font-black tracking-tight text-white uppercase">Position Size</h1>
-            <p class="text-blue-400 text-xs font-bold tracking-widest uppercase mt-1">Multi-Ticker Risk Tool</p>
+            <h1 class="text-2xl font-black tracking-tight text-white uppercase">Position Size Calculator</h1>
+            <p class="text-blue-400 text-xs font-bold tracking-widest uppercase mt-1">Multi-Ticker • Real-Time Data • Smart Triggers</p>
+        </div>
+
+        <div class="p-4 bg-blue-900/10 border-b border-blue-500/20">
+            <div class="flex flex-col gap-2">
+                <label class="font-bold text-blue-200 text-sm">Select API Provider:</label>
+                <select id="apiProvider" class="bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 focus:outline-none focus:border-blue-500 font-bold">
+                    <option value="finnhub">Finnhub</option>
+                    <option value="twelvedata">Twelve Data</option>
+                </select>
+                <div id="apiKeySection" class="mt-2">
+                    <div class="flex gap-2">
+                        <input type="password" id="apiKeyInput" placeholder="Enter API Key" class="w-full bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 focus:outline-none focus:border-blue-500">
+                        <button onclick="saveKey()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold transition-colors whitespace-nowrap">SAVE</button>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-2" id="apiInfo">
+                        Get free key: <a href="https://finnhub.io" target="_blank" class="text-blue-400 underline">finnhub.io</a>
+                    </p>
+                </div>
+            </div>
         </div>
 
         <div class="p-6 space-y-6">
-            
-            <!-- Risk Input (Global) -->
-            <div class="space-y-2">
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Risk Per Trade ($)</label>
-                <div class="relative">
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-800 font-extrabold text-xl z-10 pointer-events-none">$</span>
-                    <input type="number" id="riskValue" class="super-input risk-input" placeholder="Example: 500" value="950">
+            <div class="space-y-2 flex flex-col items-center">
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider text-center">Risk Per Trade ($)</label>
+                <div class="w-full max-w-xs">
+                    <input type="number" id="riskValue" class="super-input risk-input" placeholder="950" value="950">
                 </div>
             </div>
 
-            <!-- Ticker Inputs Grid -->
             <div class="space-y-2">
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Enter Tickers (Up to 5)</label>
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <input type="text" class="super-input ticker-input" placeholder="Ticker 1">
-                    <input type="text" class="super-input ticker-input" placeholder="Ticker 2">
-                    <input type="text" class="super-input ticker-input" placeholder="Ticker 3">
-                    <input type="text" class="super-input ticker-input" placeholder="Ticker 4">
-                    <input type="text" class="super-input ticker-input" placeholder="Ticker 5">
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Enter Tickers & Trigger Prices (Up to 6)</label>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div class="flex flex-col gap-2">
+                        <input type="text" class="super-input ticker-input" placeholder="Ticker">
+                        <input type="number" step="0.01" class="trigger-input" placeholder="Trigger $">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <input type="text" class="super-input ticker-input" placeholder="Ticker">
+                        <input type="number" step="0.01" class="trigger-input" placeholder="Trigger $">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <input type="text" class="super-input ticker-input" placeholder="Ticker">
+                        <input type="number" step="0.01" class="trigger-input" placeholder="Trigger $">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <input type="text" class="super-input ticker-input" placeholder="Ticker">
+                        <input type="number" step="0.01" class="trigger-input" placeholder="Trigger $">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <input type="text" class="super-input ticker-input" placeholder="Ticker">
+                        <input type="number" step="0.01" class="trigger-input" placeholder="Trigger $">
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <input type="text" class="super-input ticker-input" placeholder="Ticker">
+                        <input type="number" step="0.01" class="trigger-input" placeholder="Trigger $">
+                    </div>
                 </div>
             </div>
 
-            <!-- GO Button -->
             <button onclick="calculateAll()" id="calcBtn" class="w-full bg-gradient-to-br from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white px-6 py-4 rounded-xl font-black text-2xl shadow-lg shadow-green-900/50 transition-all active:scale-95">
                 CALCULATE ALL
             </button>
             
-            <!-- Global Error Msg -->
             <p id="errorMsg" class="text-red-400 font-bold text-sm text-center bg-red-900/20 py-2 rounded hidden"></p>
-
         </div>
     </div>
 
-    <!-- Results Container -->
-    <div id="resultsContainer" class="w-full max-w-2xl space-y-6 pb-12">
-        <!-- Result cards will be injected here by JS -->
-    </div>
+    <div id="resultsContainer" class="w-full max-w-2xl space-y-6 pb-12"></div>
 
     <script>
-        // --- CONFIGURATION ---
-        const HARDCODED_KEY = "d52cn01r01qhp11u96b0d52cn01r01qhp11u96bg"; 
-        // ---------------------
+        // API Configuration
+        const API_CONFIGS = {
+            finnhub: {
+                name: 'Finnhub',
+                infoUrl: 'https://finnhub.io',
+                storageKey: 'finnhub_key'
+            },
+            twelvedata: {
+                name: 'Twelve Data',
+                infoUrl: 'https://twelvedata.com',
+                storageKey: 'twelvedata_key'
+            }
+        };
+
+        // Update API info when provider changes
+        document.getElementById('apiProvider').addEventListener('change', (e) => {
+            const config = API_CONFIGS[e.target.value];
+            document.getElementById('apiInfo').innerHTML = 
+                `Get free key: <a href="${config.infoUrl}" target="_blank" class="text-blue-400 underline">${config.infoUrl}</a>`;
+            
+            // Load saved key for this provider
+            const savedKey = localStorage.getItem(config.storageKey);
+            if (savedKey) {
+                document.getElementById('apiKeyInput').value = savedKey;
+            } else {
+                document.getElementById('apiKeyInput').value = '';
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const provider = document.getElementById('apiProvider').value;
+            const savedKey = localStorage.getItem(API_CONFIGS[provider].storageKey);
+            if (savedKey) {
+                document.getElementById('apiKeyInput').value = savedKey;
+            }
+        });
+
+        function saveKey() {
+            const provider = document.getElementById('apiProvider').value;
+            const key = document.getElementById('apiKeyInput').value.trim();
+            if (key) {
+                localStorage.setItem(API_CONFIGS[provider].storageKey, key);
+                showSuccess('API Key saved successfully!');
+            }
+        }
+
+        function showSuccess(msg) {
+            const errorMsg = document.getElementById('errorMsg');
+            errorMsg.innerText = msg;
+            errorMsg.classList.remove('hidden', 'bg-red-900/20', 'text-red-400');
+            errorMsg.classList.add('bg-green-900/20', 'text-green-400');
+            setTimeout(() => errorMsg.classList.add('hidden'), 3000);
+        }
+
+        // API FETCHERS - All optimized for parallel execution
+        
+        async function fetchTwelveData(ticker, apiKey) {
+            const quoteUrl = `https://api.twelvedata.com/quote?symbol=${ticker}&apikey=${apiKey}`;
+            const timeSeriesUrl = `https://api.twelvedata.com/time_series?symbol=${ticker}&interval=1day&outputsize=1&apikey=${apiKey}`;
+            
+            // Parallel fetch for quote and daily high/low
+            const [quoteRes, tsRes] = await Promise.all([
+                fetch(quoteUrl),
+                fetch(timeSeriesUrl)
+            ]);
+            
+            if (quoteRes.status === 429 || tsRes.status === 429) throw new Error("Rate Limit");
+            
+            const quote = await quoteRes.json();
+            const timeSeries = await tsRes.json();
+            
+            if (quote.code === 400 || quote.status === 'error') throw new Error("Invalid Ticker");
+            
+            return {
+                c: parseFloat(quote.close),
+                h: parseFloat(quote.high),
+                l: parseFloat(quote.low),
+                pc: parseFloat(quote.previous_close)
+            };
+        }
+
+        async function fetchFinnhub(ticker, apiKey) {
+            const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`;
+            const res = await fetch(quoteUrl);
+            
+            if (res.status === 429) throw new Error("Rate Limit");
+            const data = await res.json();
+            
+            if (data.c === 0 && data.d === null) throw new Error("Invalid Ticker");
+            
+            return {
+                c: data.c,
+                h: data.h || data.c,
+                l: data.l || data.c,
+                pc: data.pc
+            };
+        }
+
+        async function fetchTickerData(ticker, provider, apiKey) {
+            switch(provider) {
+                case 'twelvedata':
+                    return await fetchTwelveData(ticker, apiKey);
+                case 'finnhub':
+                    return await fetchFinnhub(ticker, apiKey);
+                default:
+                    throw new Error("Unknown provider");
+            }
+        }
 
         async function calculateAll() {
-            // 1. Get Inputs
             const riskVal = parseFloat(document.getElementById('riskValue').value);
             const tickerInputs = Array.from(document.querySelectorAll('.ticker-input'));
+            const triggerInputs = Array.from(document.querySelectorAll('.trigger-input'));
             
-            // Filter out empty inputs and uppercase them
-            const tickers = tickerInputs
-                .map(input => input.value.trim().toUpperCase())
-                .filter(val => val !== "");
-
+            const tickerData = tickerInputs.map((input, index) => ({
+                ticker: input.value.trim().toUpperCase(),
+                trigger: parseFloat(triggerInputs[index].value) || null
+            })).filter(item => item.ticker !== "");
+            
+            const provider = document.getElementById('apiProvider').value;
+            
             const btn = document.getElementById('calcBtn');
             const container = document.getElementById('resultsContainer');
             const errorMsg = document.getElementById('errorMsg');
 
-            // 2. Validation
-            let apiKey = localStorage.getItem('finnhub_key');
-            if (!apiKey && HARDCODED_KEY) apiKey = HARDCODED_KEY;
+            const apiKey = localStorage.getItem(API_CONFIGS[provider].storageKey);
 
             if (!apiKey) {
-                errorMsg.innerText = "API Key Missing";
-                errorMsg.classList.remove('hidden');
+                errorMsg.innerText = "Please enter and save your API Key above.";
+                errorMsg.classList.remove('hidden', 'bg-green-900/20', 'text-green-400');
+                errorMsg.classList.add('bg-red-900/20', 'text-red-400');
                 return;
             }
-            if (tickers.length === 0) {
-                errorMsg.innerText = "Please enter at least one ticker.";
-                errorMsg.classList.remove('hidden');
-                return;
-            }
-            if (isNaN(riskVal)) {
-                errorMsg.innerText = "Please enter a valid risk amount.";
-                errorMsg.classList.remove('hidden');
+            if (tickerData.length === 0) {
+                errorMsg.innerText = "Enter at least one ticker.";
+                errorMsg.classList.remove('hidden', 'bg-green-900/20', 'text-green-400');
+                errorMsg.classList.add('bg-red-900/20', 'text-red-400');
                 return;
             }
 
-            // 3. Reset UI
             errorMsg.classList.add('hidden');
-            container.innerHTML = ''; // Clear previous results
-            const originalBtnText = btn.innerText;
-            btn.innerHTML = '<span class="animate-pulse">PROCESSING...</span>';
+            container.innerHTML = ''; 
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = '<span class="animate-pulse">⚡ FETCHING DATA...</span>';
+            
+            const startTime = performance.now();
 
-            // 4. Fetch Logic (Parallel Requests)
             try {
-                const promises = tickers.map(async (ticker) => {
-                    try {
-                        const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`);
-                        if (response.status === 429) throw new Error("Rate Limit");
-                        const data = await response.json();
-                        
-                        if (data.c === 0 && data.d === null) throw new Error("Invalid Ticker");
-                        
-                        return { ticker, data, success: true };
-                    } catch (err) {
-                        return { ticker, error: err.message, success: false };
-                    }
-                });
+                // PARALLEL PROCESSING - Fetch all tickers simultaneously!
+                const fetchPromises = tickerData.map(item => 
+                    fetchTickerData(item.ticker, provider, apiKey)
+                        .then(data => ({ ticker: item.ticker, trigger: item.trigger, data, success: true }))
+                        .catch(err => ({ ticker: item.ticker, trigger: item.trigger, error: err.message, success: false }))
+                );
 
-                const results = await Promise.all(promises);
+                const results = await Promise.all(fetchPromises);
+                const endTime = performance.now();
+                const fetchTime = ((endTime - startTime) / 1000).toFixed(2);
 
-                // 5. Render Results
+                // Display results
                 results.forEach(result => {
                     if (result.success) {
-                        createResultCard(result.ticker, result.data, riskVal, container);
+                        createResultCard(result.ticker, result.data, riskVal, result.trigger, container);
                     } else {
                         createErrorCard(result.ticker, result.error, container);
                     }
                 });
 
+                // Show performance metric
+                const perfDiv = document.createElement('div');
+                perfDiv.className = 'text-center text-green-400 text-sm font-bold bg-green-900/20 py-2 rounded-lg';
+                perfDiv.innerHTML = `⚡ Fetched ${results.length} ticker(s) in ${fetchTime}s`;
+                container.appendChild(perfDiv);
+
             } catch (err) {
                 console.error(err);
-                errorMsg.innerText = "System Error: " + err.message;
-                errorMsg.classList.remove('hidden');
+                errorMsg.innerText = "Error: " + err.message;
+                errorMsg.classList.remove('hidden', 'bg-green-900/20', 'text-green-400');
+                errorMsg.classList.add('bg-red-900/20', 'text-red-400');
             } finally {
                 btn.innerHTML = originalBtnText;
             }
         }
 
-        function createResultCard(ticker, data, riskAmount, container) {
-            const current = data.c;
-            const high = data.h;
-            const low = data.l;
+        function createResultCard(ticker, data, riskAmount, triggerPrice, container) {
+            const { c: current, h: high, l: low, pc: prevClose } = data;
 
-            // --- 1 CENT BUFFER LOGIC ---
             const longStopPrice = low - 0.01;
             const shortStopPrice = high + 0.01;
 
-            // LONG CALC
             const riskPerShareLong = current - longStopPrice;
             let sharesLong = 0;
             if (riskPerShareLong > 0) {
@@ -209,7 +356,6 @@
                 sharesLong = "N/A";
             }
 
-            // SHORT CALC
             const riskPerShareShort = shortStopPrice - current;
             let sharesShort = 0;
             if (riskPerShareShort > 0) {
@@ -218,10 +364,49 @@
                 sharesShort = "N/A";
             }
 
-            // HTML Template for Card
+            // Determine if stock is UP or DOWN on the day
+            const isUpDay = current > prevClose;
+            const isDownDay = current < prevClose;
+            const changePercent = ((current - prevClose) / prevClose * 100).toFixed(2);
+            const changeColor = isUpDay ? 'text-green-400' : 'text-red-400';
+            const changeSymbol = isUpDay ? '▲' : '▼';
+
+            // Smart trigger logic based on day direction
+            let longTriggerMet = false;
+            let shortTriggerMet = false;
+            let triggerDisplay = '';
+            let notTriggered = false;
+
+            if (triggerPrice !== null && !isNaN(triggerPrice)) {
+                if (isUpDay && current > triggerPrice) {
+                    // Stock is UP and above trigger = LONG TRIGGERED
+                    longTriggerMet = true;
+                    triggerDisplay = `<div class="text-center mt-2 text-green-400 text-xs font-bold">✓ LONG TRIGGER MET (Above $${triggerPrice.toFixed(2)})</div>`;
+                } else if (isDownDay && current < triggerPrice) {
+                    // Stock is DOWN and below trigger = SHORT TRIGGERED
+                    shortTriggerMet = true;
+                    triggerDisplay = `<div class="text-center mt-2 text-red-400 text-xs font-bold">✓ SHORT TRIGGER MET (Below $${triggerPrice.toFixed(2)})</div>`;
+                } else {
+                    // Trigger set but not met
+                    notTriggered = true;
+                    if (isUpDay) {
+                        triggerDisplay = `<div class="text-center mt-2 text-gray-500 text-xs font-bold">⚠ LONG Trigger Not Met (Need >${triggerPrice.toFixed(2)}, at ${current.toFixed(2)})</div>`;
+                    } else if (isDownDay) {
+                        triggerDisplay = `<div class="text-center mt-2 text-gray-500 text-xs font-bold">⚠ SHORT Trigger Not Met (Need <${triggerPrice.toFixed(2)}, at ${current.toFixed(2)})</div>`;
+                    } else {
+                        triggerDisplay = `<div class="text-center mt-2 text-yellow-400 text-xs font-bold">⚠ Flat on Day (Trigger: ${triggerPrice.toFixed(2)})</div>`;
+                    }
+                }
+            }
+
+            // Apply classes: triggered box gets highlight, opposite gets greyed out
+            const longClasses = longTriggerMet ? 'trigger-met' : (shortTriggerMet || notTriggered ? 'not-triggered' : '');
+            const shortClasses = shortTriggerMet ? 'trigger-met-short' : (longTriggerMet || notTriggered ? 'not-triggered' : '');
+            const longBadge = longTriggerMet ? '<div class="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-black px-2 py-1 rounded-full z-20">✓</div>' : '';
+            const shortBadge = shortTriggerMet ? '<div class="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-full z-20">✓</div>' : '';
+
             const cardHTML = `
                 <div class="glass-card rounded-xl p-5 animate-fade-in ring-1 ring-white/10">
-                    <!-- Card Header -->
                     <div class="flex justify-between items-start border-b border-white/10 pb-3 mb-4">
                         <div>
                             <h2 class="text-3xl font-black text-white tracking-tight">${ticker}</h2>
@@ -229,17 +414,18 @@
                         </div>
                         <div class="text-right">
                             <div class="text-2xl font-bold text-blue-400">$${current.toFixed(2)}</div>
-                            <div class="text-[10px] text-gray-500 font-mono mt-1">
+                            <div class="text-[10px] ${changeColor} font-mono mt-1 font-bold">
+                                ${changeSymbol} ${Math.abs(changePercent)}%
+                            </div>
+                            <div class="text-[10px] text-gray-500 font-mono">
                                 H: <span class="text-gray-300">${high.toFixed(2)}</span> / L: <span class="text-gray-300">${low.toFixed(2)}</span>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Setup Grid -->
-                    <div class="grid grid-cols-2 gap-4">
-                        
-                        <!-- Long Side -->
-                        <div class="bg-emerald-900/20 border border-emerald-500/20 rounded-lg p-3 text-center group hover:bg-emerald-900/30 transition-colors">
+                    ${triggerDisplay}
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div class="bg-emerald-900/20 border border-emerald-500/20 rounded-lg p-3 text-center group hover:bg-emerald-900/30 transition-colors relative ${longClasses}">
+                            ${longBadge}
                             <div class="text-emerald-500 text-[10px] font-black uppercase tracking-widest mb-1">LONG SETUP</div>
                             <div class="text-3xl font-black text-white font-mono">${typeof sharesLong === 'number' ? sharesLong.toLocaleString() : sharesLong}</div>
                             <div class="text-[10px] text-emerald-200/50 uppercase font-bold tracking-wider mb-2">Shares</div>
@@ -248,9 +434,8 @@
                                 <span class="text-emerald-400 font-mono font-bold text-sm">${longStopPrice.toFixed(2)}</span>
                             </div>
                         </div>
-
-                        <!-- Short Side -->
-                        <div class="bg-rose-900/20 border border-rose-500/20 rounded-lg p-3 text-center group hover:bg-rose-900/30 transition-colors">
+                        <div class="bg-rose-900/20 border border-rose-500/20 rounded-lg p-3 text-center group hover:bg-rose-900/30 transition-colors relative ${shortClasses}">
+                            ${shortBadge}
                             <div class="text-rose-500 text-[10px] font-black uppercase tracking-widest mb-1">SHORT SETUP</div>
                             <div class="text-3xl font-black text-white font-mono">${typeof sharesShort === 'number' ? sharesShort.toLocaleString() : sharesShort}</div>
                             <div class="text-[10px] text-rose-200/50 uppercase font-bold tracking-wider mb-2">Shares</div>
@@ -259,12 +444,9 @@
                                 <span class="text-rose-400 font-mono font-bold text-sm">${shortStopPrice.toFixed(2)}</span>
                             </div>
                         </div>
-
                     </div>
                 </div>
             `;
-            
-            // Append to container
             const div = document.createElement('div');
             div.innerHTML = cardHTML;
             container.appendChild(div);
@@ -275,7 +457,7 @@
                 <div class="bg-red-900/20 border border-red-500/30 rounded-xl p-4 animate-fade-in flex justify-between items-center">
                     <div>
                         <h2 class="text-xl font-black text-red-400 tracking-tight">${ticker}</h2>
-                        <p class="text-xs text-red-300 mt-1">Failed to fetch data</p>
+                        <p class="text-xs text-red-300 mt-1">Fetch Error</p>
                     </div>
                     <div class="text-xs bg-red-900/50 px-3 py-1 rounded text-red-200 border border-red-500/20">
                         ${error}
@@ -287,7 +469,6 @@
             container.appendChild(div);
         }
 
-        // Add Enter Key Support for all inputs
         document.querySelectorAll('input').forEach(input => {
             input.addEventListener('keydown', (e) => {
                 if(e.key === 'Enter') calculateAll();
