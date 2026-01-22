@@ -180,31 +180,45 @@
                 <div class="flex justify-end">
                     <button onclick="clearInputs()" class="text-[10px] text-red-400 font-bold hover:text-red-300 mb-1">CLEAR</button>
                 </div>
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                    <div class="flex flex-col gap-2">
+                
+                <!-- Dynamic Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-2 gap-3" id="inputGrid">
+                    <!-- Ticker 0 & 1 (Default) -->
+                    <div class="flex flex-col gap-2 ticker-group" id="group-0">
                         <input type="text" class="super-input ticker-input" data-idx="0" placeholder="TICKER">
                         <input type="number" step="0.01" class="trigger-input" data-idx="0" placeholder="Trigger $">
                     </div>
-                    <div class="flex flex-col gap-2">
+                    <div class="flex flex-col gap-2 ticker-group" id="group-1">
                         <input type="text" class="super-input ticker-input" data-idx="1" placeholder="TICKER">
                         <input type="number" step="0.01" class="trigger-input" data-idx="1" placeholder="Trigger $">
                     </div>
-                    <div class="flex flex-col gap-2">
+                    
+                    <!-- Ticker 2 & 3 -->
+                    <div class="flex flex-col gap-2 ticker-group hidden" id="group-2">
                         <input type="text" class="super-input ticker-input" data-idx="2" placeholder="TICKER">
                         <input type="number" step="0.01" class="trigger-input" data-idx="2" placeholder="Trigger $">
                     </div>
-                    <div class="flex flex-col gap-2">
+                    <div class="flex flex-col gap-2 ticker-group hidden" id="group-3">
                         <input type="text" class="super-input ticker-input" data-idx="3" placeholder="TICKER">
                         <input type="number" step="0.01" class="trigger-input" data-idx="3" placeholder="Trigger $">
                     </div>
-                    <div class="flex flex-col gap-2">
+
+                    <!-- Ticker 4 & 5 -->
+                    <div class="flex flex-col gap-2 ticker-group hidden" id="group-4">
                         <input type="text" class="super-input ticker-input" data-idx="4" placeholder="TICKER">
                         <input type="number" step="0.01" class="trigger-input" data-idx="4" placeholder="Trigger $">
                     </div>
-                    <div class="flex flex-col gap-2">
+                    <div class="flex flex-col gap-2 ticker-group hidden" id="group-5">
                         <input type="text" class="super-input ticker-input" data-idx="5" placeholder="TICKER">
                         <input type="number" step="0.01" class="trigger-input" data-idx="5" placeholder="Trigger $">
                     </div>
+                </div>
+
+                <!-- Add Row Button -->
+                <div class="flex justify-center mt-2">
+                    <button id="addRowBtn" onclick="addMoreRows()" class="text-xs bg-slate-800 hover:bg-slate-700 text-blue-300 border border-blue-900/50 px-4 py-2 rounded-full font-bold transition-all">
+                        + ADD ROW
+                    </button>
                 </div>
             </div>
 
@@ -236,16 +250,20 @@
 
         let isFocusMode = false;
         let isVoiceEnabled = false;
+        let visibleCount = 2; // Default 2 tickers
 
         function loadSettings() {
             const savedRisk = localStorage.getItem('riskValue');
             const savedProvider = localStorage.getItem('selectedProvider');
             const savedSlippage = localStorage.getItem('slippageValue');
+            const savedCount = localStorage.getItem('visibleCount');
             
             if (savedRisk) document.getElementById('riskValue').value = savedRisk;
             if (savedProvider) document.getElementById('apiProvider').value = savedProvider;
             if (savedSlippage) document.getElementById('slippageValue').value = savedSlippage;
+            if (savedCount) visibleCount = parseInt(savedCount);
             
+            updateVisibleRows();
             updateApiKeyInput();
 
             document.querySelectorAll('.ticker-input').forEach(input => {
@@ -262,6 +280,34 @@
             document.getElementById('showVoiceSetting').checked = showVoice;
             
             updateUIControls();
+        }
+
+        function addMoreRows() {
+            if (visibleCount < 6) {
+                visibleCount += 2;
+                localStorage.setItem('visibleCount', visibleCount);
+                updateVisibleRows();
+            }
+        }
+
+        function updateVisibleRows() {
+            // Show groups based on visibleCount
+            for (let i = 0; i < 6; i++) {
+                const group = document.getElementById(`group-${i}`);
+                if (i < visibleCount) {
+                    group.classList.remove('hidden');
+                } else {
+                    group.classList.add('hidden');
+                }
+            }
+            
+            // Hide button if max reached
+            const btn = document.getElementById('addRowBtn');
+            if (visibleCount >= 6) {
+                btn.classList.add('hidden');
+            } else {
+                btn.classList.remove('hidden');
+            }
         }
 
         function saveInputs() {
@@ -398,11 +444,11 @@
             const h = now.getHours();
             const m = now.getMinutes();
             const s = now.getSeconds();
-            const day = now.getDay(); // 0 = Sun, 6 = Sat
+            const day = now.getDay(); 
 
             const countdownEl = document.getElementById('countdown');
 
-            // 1. Weekend Check
+            // Weekend Check
             if (day === 0 || day === 6) {
                 countdownEl.innerText = "CLOSED";
                 countdownEl.classList.remove('text-white', 'text-red-500');
@@ -411,16 +457,14 @@
             }
 
             const totalMinutes = (h * 60) + m;
-            const marketOpenMinutes = (9 * 60) + 30; // 9:30 AM
-            const marketCloseMinutes = (16 * 60);    // 4:00 PM
+            const marketOpenMinutes = (9 * 60) + 30; 
+            const marketCloseMinutes = (16 * 60);    
 
-            // 2. Pre-Market / Post-Market Check
             if (totalMinutes < marketOpenMinutes || totalMinutes >= marketCloseMinutes) {
                 countdownEl.innerText = "CLOSED";
                 countdownEl.classList.remove('text-white', 'text-red-500');
                 countdownEl.classList.add('text-gray-400');
             } else {
-                // 3. Active Session Countdown to 4:00 PM
                 const closeTime = new Date();
                 closeTime.setHours(16, 0, 0, 0);
                 const diff = closeTime - now;
@@ -432,7 +476,6 @@
                 countdownEl.innerText = 
                     `${hh}:${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')}`;
                 
-                // Color logic: Red if less than 5 mins
                 if (hh === 0 && mm < 5) {
                     countdownEl.classList.remove('text-gray-400');
                     countdownEl.classList.add('text-red-500');
@@ -480,12 +523,15 @@
             const inputs = Array.from(document.querySelectorAll('.ticker-input'));
             const triggers = Array.from(document.querySelectorAll('.trigger-input'));
             
-            const tasks = inputs.map((input, i) => {
-                const ticker = input.value.trim().toUpperCase();
-                const trigger = parseFloat(triggers[i].value);
-                if (!ticker) return null;
-                return { ticker, trigger };
-            }).filter(x => x);
+            // Only process visible inputs based on visibleCount
+            const tasks = [];
+            for(let i=0; i<visibleCount; i++) {
+                 const ticker = inputs[i].value.trim().toUpperCase();
+                 const trigger = parseFloat(triggers[i].value);
+                 if (ticker) {
+                     tasks.push({ ticker, trigger });
+                 }
+            }
 
             if (tasks.length === 0) return;
 
