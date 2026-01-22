@@ -534,7 +534,7 @@
                             <div class="text-sm font-black ${typeColor} mt-1 leading-none">${setupType}</div>
                         </div>
                         
-                        ${trigger ? `<div class="text-[12px] font-mono font-bold text-gray-400 pb-1">TRIG: $${trigger.toFixed(2)}</div>` : '<div></div>'}
+                        ${trigger ? `<div class="text-[12px] font-mono font-bold text-gray-400 pb-1">Trigger: $${trigger.toFixed(2)}</div>` : '<div></div>'}
                         
                         <div class="text-right">
                             <div class="text-2xl font-bold text-blue-400 leading-none">$${c.toFixed(2)}</div>
@@ -551,14 +551,14 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div class="bg-slate-900/40 rounded p-2 text-center border border-white/5 copy-hover transition-colors group" onclick="copyToClipboard('${shares}', this)">
                             <div class="text-[9px] text-gray-500 uppercase font-bold group-hover:text-blue-300">Shares (Click to Copy)</div>
-                            <div class="text-2xl font-mono font-bold text-white relative">
+                            <div class="text-3xl font-mono font-black text-white relative">
                                 <span class="share-val">${shares.toLocaleString()}</span>
                                 <span class="copy-msg absolute inset-0 text-green-400 text-sm flex items-center justify-center opacity-0">COPIED!</span>
                             </div>
                         </div>
-                        <div class="bg-slate-900/40 rounded p-2 text-center border border-white/5">
-                            <div class="text-[9px] text-gray-500 uppercase font-bold">Stop</div>
-                            <div class="text-2xl font-mono font-bold text-red-400">${stopPrice.toFixed(2)}</div>
+                        <div class="bg-slate-900/20 rounded p-2 text-center border border-white/5">
+                            <div class="text-[9px] text-gray-600 uppercase font-bold">Stop</div>
+                            <div class="text-xl font-mono font-bold text-red-400/80">${stopPrice.toFixed(2)}</div>
                         </div>
                     </div>
                 </div>
