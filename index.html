@@ -56,22 +56,34 @@
         .animate-fade-in {
             animation: fadeIn 0.3s ease-out forwards;
         }
-        /* Status States */
+        
+        /* UPDATED VISUAL STATES */
         .status-active-long {
-            border: 1px solid #10b981 !important;
-            box-shadow: 0 0 15px rgba(16, 185, 129, 0.15) !important;
+            border: 2px solid #10b981 !important;
+            background: linear-gradient(180deg, rgba(6, 78, 59, 0.4) 0%, rgba(30, 41, 59, 0.7) 100%) !important;
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2) !important;
         }
         .status-active-short {
-            border: 1px solid #ef4444 !important;
-            box-shadow: 0 0 15px rgba(239, 68, 68, 0.15) !important;
+            border: 2px solid #ef4444 !important;
+            background: linear-gradient(180deg, rgba(127, 29, 29, 0.4) 0%, rgba(30, 41, 59, 0.7) 100%) !important;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.2) !important;
         }
         .status-wait {
-            opacity: 0.6;
-            filter: grayscale(80%);
+            opacity: 0.5;
+            filter: grayscale(90%);
             border: 1px solid rgba(255,255,255,0.05);
         }
-        .clock-digit {
-            font-variant-numeric: tabular-nums;
+        
+        .copy-hover:hover {
+            cursor: pointer;
+            background-color: rgba(255,255,255,0.1);
+        }
+        .copy-feedback {
+            animation: fadeOut 1s forwards;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
         }
     </style>
 </head>
@@ -89,20 +101,38 @@
             <p class="text-blue-400 text-xs font-bold tracking-widest uppercase mt-1">Multi-Ticker • Real-Time Data • Smart Triggers</p>
         </div>
 
-        <!-- API Toggle -->
+        <!-- Settings Toggle -->
         <div class="p-2 bg-blue-900/10 border-b border-blue-500/20 text-center">
-            <span class="text-[10px] font-bold text-blue-300 uppercase cursor-pointer hover:text-white" onclick="toggleSettings()">▼ API</span>
+            <span class="text-[10px] font-bold text-blue-300 uppercase cursor-pointer hover:text-white flex justify-center items-center gap-1" onclick="toggleSettings()">
+                <span>⚙</span> SETTINGS
+            </span>
         </div>
         
-        <div id="settingsPanel" class="hidden p-4 bg-slate-900/50 border-b border-white/5">
-            <div class="flex flex-col gap-2">
-                <select id="apiProvider" class="bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 text-sm font-bold">
-                    <option value="finnhub">Finnhub</option>
-                    <option value="twelvedata">Twelve Data</option>
-                </select>
-                <div class="flex gap-2">
-                    <input type="password" id="apiKeyInput" placeholder="Enter API Key" class="w-full bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 text-sm">
-                    <button onclick="saveKey()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-xs font-bold whitespace-nowrap">SAVE</button>
+        <!-- Collapsible Settings Panel -->
+        <div id="settingsPanel" class="hidden p-4 bg-slate-900/50 border-b border-white/5 animate-fade-in">
+            <div class="flex flex-col gap-4">
+                <!-- API Section -->
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">API Provider</label>
+                    <div class="flex flex-col gap-2">
+                        <select id="apiProvider" class="bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 text-sm font-bold">
+                            <option value="finnhub">Finnhub</option>
+                            <option value="twelvedata">Twelve Data</option>
+                        </select>
+                        <div class="flex gap-2">
+                            <input type="password" id="apiKeyInput" placeholder="Enter API Key" class="w-full bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 text-sm">
+                            <button onclick="saveKey()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-xs font-bold whitespace-nowrap">SAVE KEY</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Slippage Section -->
+                <div class="space-y-1 border-t border-white/5 pt-2">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Slippage Buffer ($)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="slippageValue" step="0.01" class="bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 text-sm font-bold w-24" placeholder="0.00">
+                        <p class="text-[10px] text-gray-500">Added to entry price for safer sizing.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -170,9 +200,11 @@
         function loadSettings() {
             const savedRisk = localStorage.getItem('riskValue');
             const savedProvider = localStorage.getItem('selectedProvider');
+            const savedSlippage = localStorage.getItem('slippageValue');
             
             if (savedRisk) document.getElementById('riskValue').value = savedRisk;
             if (savedProvider) document.getElementById('apiProvider').value = savedProvider;
+            if (savedSlippage) document.getElementById('slippageValue').value = savedSlippage;
             
             updateApiKeyInput();
 
@@ -186,6 +218,7 @@
 
         function saveInputs() {
             localStorage.setItem('riskValue', document.getElementById('riskValue').value);
+            localStorage.setItem('slippageValue', document.getElementById('slippageValue').value);
             document.querySelectorAll('.ticker-input').forEach(input => {
                 localStorage.setItem(`ticker_${input.dataset.idx}`, input.value.toUpperCase());
             });
@@ -215,8 +248,8 @@
             const key = document.getElementById('apiKeyInput').value.trim();
             if (key) {
                 localStorage.setItem(API_CONFIGS[provider].storageKey, key);
-                alert('API Key Saved');
-                toggleSettings();
+                // We don't close the panel automatically anymore since there are multiple settings
+                alert('API Key Saved'); 
             }
         }
 
@@ -273,6 +306,7 @@
         // --- CALCULATION ---
         async function calculateAll() {
             const riskVal = parseFloat(document.getElementById('riskValue').value) || 500;
+            const slippageVal = parseFloat(document.getElementById('slippageValue').value) || 0;
             const provider = document.getElementById('apiProvider').value;
             const apiKey = localStorage.getItem(API_CONFIGS[provider].storageKey);
             const container = document.getElementById('resultsContainer');
@@ -280,9 +314,9 @@
             const errorMsg = document.getElementById('errorMsg');
 
             if (!apiKey) {
-                errorMsg.innerText = "Please set API Key first.";
+                errorMsg.innerText = "Please set API Key in Settings.";
                 errorMsg.classList.remove('hidden');
-                toggleSettings();
+                document.getElementById('settingsPanel').classList.remove('hidden');
                 return;
             }
             
@@ -319,11 +353,10 @@
                 const fetchTime = ((endTime - startTime) / 1000).toFixed(2);
 
                 results.forEach(res => {
-                    if (res.success) renderCard(res, riskVal, container);
+                    if (res.success) renderCard(res, riskVal, slippageVal, container);
                     else renderError(res, container);
                 });
 
-                // Add time metric at bottom
                 const metricDiv = document.createElement('div');
                 metricDiv.className = 'text-center text-[10px] text-gray-500 font-mono mt-4';
                 metricDiv.innerText = `Fetched ${results.length} tickers in ${fetchTime}s`;
@@ -337,7 +370,7 @@
             }
         }
 
-        function renderCard(item, risk, container) {
+        function renderCard(item, risk, slippage, container) {
             const { c, h, l, pc } = item.data;
             const { ticker, trigger } = item;
             
@@ -345,17 +378,19 @@
             let setupType = isGreenDay ? "LONG" : "SHORT";
             let typeColor = isGreenDay ? "text-emerald-400" : "text-rose-400";
             let stopPrice = isGreenDay ? (l - 0.01) : (h + 0.01);
-            let riskPerShare = isGreenDay ? (c - stopPrice) : (stopPrice - c);
             
+            // MATH WITH SLIPPAGE: Risk per share increases by the slippage amount
+            let riskPerShare = isGreenDay ? (c - stopPrice) : (stopPrice - c);
+            riskPerShare += slippage; // Buffer added to risk per share
+
             let shares = 0;
             if (riskPerShare > 0) shares = Math.floor(risk / riskPerShare);
             
-            let statusClass = "status-wait"; // Default
+            let statusClass = "status-wait"; 
             if (trigger) {
                 if (isGreenDay && c >= trigger) statusClass = "status-active-long";
                 else if (!isGreenDay && c <= trigger) statusClass = "status-active-short";
             } else {
-                // No trigger set? Treat as wait or just neutral
                 statusClass = "glass-card"; 
             }
 
@@ -380,9 +415,12 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-4 mt-3">
-                        <div class="bg-slate-900/40 rounded p-2 text-center border border-white/5">
-                            <div class="text-[9px] text-gray-500 uppercase font-bold">Shares</div>
-                            <div class="text-2xl font-mono font-bold text-white">${shares.toLocaleString()}</div>
+                        <div class="bg-slate-900/40 rounded p-2 text-center border border-white/5 copy-hover transition-colors group" onclick="copyToClipboard('${shares}', this)">
+                            <div class="text-[9px] text-gray-500 uppercase font-bold group-hover:text-blue-300">Shares (Click to Copy)</div>
+                            <div class="text-2xl font-mono font-bold text-white relative">
+                                <span class="share-val">${shares.toLocaleString()}</span>
+                                <span class="copy-msg absolute inset-0 text-green-400 text-sm flex items-center justify-center opacity-0">COPIED!</span>
+                            </div>
                         </div>
                         <div class="bg-slate-900/40 rounded p-2 text-center border border-white/5">
                             <div class="text-[9px] text-gray-500 uppercase font-bold">Stop</div>
@@ -396,6 +434,26 @@
             const div = document.createElement('div');
             div.innerHTML = html;
             container.appendChild(div);
+        }
+
+        function copyToClipboard(text, element) {
+            // Remove commas for copying
+            const cleanText = text.replace(/,/g, '');
+            navigator.clipboard.writeText(cleanText).then(() => {
+                // Visual feedback
+                const valSpan = element.querySelector('.share-val');
+                const msgSpan = element.querySelector('.copy-msg');
+                
+                valSpan.classList.add('opacity-0');
+                msgSpan.classList.remove('opacity-0');
+                msgSpan.classList.add('copy-feedback');
+                
+                setTimeout(() => {
+                    valSpan.classList.remove('opacity-0');
+                    msgSpan.classList.add('opacity-0');
+                    msgSpan.classList.remove('copy-feedback');
+                }, 1000);
+            });
         }
 
         function renderError(item, container) {
