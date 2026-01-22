@@ -85,17 +85,25 @@
             0% { opacity: 1; }
             100% { opacity: 0; }
         }
+        
+        /* Focus Mode Active State */
+        .focus-active {
+            background-color: #8b5cf6 !important; /* Purple */
+            color: white !important;
+            border-color: #a78bfa !important;
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+        }
     </style>
 </head>
 <body class="min-h-screen p-4 text-gray-100 flex flex-col items-center">
 
     <div class="glass-card rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden ring-1 ring-white/10 mb-8 relative">
-        <!-- Market Timer (Small, Top Right) -->
+        <!-- Market Timer -->
         <div class="absolute top-4 right-4 text-[10px] font-mono text-gray-500 font-bold">
             CLOSE IN: <span id="countdown" class="text-gray-400">--:--:--</span>
         </div>
 
-        <!-- Original Header -->
+        <!-- Header -->
         <div class="bg-slate-900/50 p-6 border-b border-white/10 text-center">
             <h1 class="text-2xl font-black tracking-tight text-white uppercase">Position Size Calculator</h1>
             <p class="text-blue-400 text-xs font-bold tracking-widest uppercase mt-1">Multi-Ticker • Real-Time Data • Smart Triggers</p>
@@ -108,10 +116,8 @@
             </span>
         </div>
         
-        <!-- Collapsible Settings Panel -->
         <div id="settingsPanel" class="hidden p-4 bg-slate-900/50 border-b border-white/5 animate-fade-in">
             <div class="flex flex-col gap-4">
-                <!-- API Section -->
                 <div class="space-y-1">
                     <label class="text-[10px] font-bold text-gray-400 uppercase">API Provider</label>
                     <div class="flex flex-col gap-2">
@@ -125,8 +131,6 @@
                         </div>
                     </div>
                 </div>
-                
-                <!-- Slippage Section -->
                 <div class="space-y-1 border-t border-white/5 pt-2">
                     <label class="text-[10px] font-bold text-gray-400 uppercase">Slippage Buffer ($)</label>
                     <div class="flex items-center gap-2">
@@ -151,7 +155,6 @@
                     <button onclick="clearInputs()" class="text-[10px] text-red-400 font-bold hover:text-red-300 mb-1">CLEAR</button>
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                    <!-- Ticker Inputs 0-5 -->
                     <div class="flex flex-col gap-2">
                         <input type="text" class="super-input ticker-input" data-idx="0" placeholder="TICKER">
                         <input type="number" step="0.01" class="trigger-input" data-idx="0" placeholder="Trigger $">
@@ -187,7 +190,13 @@
         </div>
     </div>
 
-    <!-- Results Container -->
+    <!-- Focus Mode Toggle & Results -->
+    <div class="w-full max-w-2xl flex justify-end mb-2">
+        <button id="focusBtn" onclick="toggleFocusMode()" class="bg-slate-800 text-gray-400 border border-slate-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center gap-2">
+            <span class="text-xs">👁</span> Focus Mode
+        </button>
+    </div>
+
     <div id="resultsContainer" class="w-full max-w-2xl space-y-4 pb-12"></div>
 
     <script>
@@ -196,7 +205,8 @@
             twelvedata: { name: 'Twelve Data', storageKey: 'twelvedata_key' }
         };
 
-        // --- PERSISTENCE ---
+        let isFocusMode = false;
+
         function loadSettings() {
             const savedRisk = localStorage.getItem('riskValue');
             const savedProvider = localStorage.getItem('selectedProvider');
@@ -248,13 +258,32 @@
             const key = document.getElementById('apiKeyInput').value.trim();
             if (key) {
                 localStorage.setItem(API_CONFIGS[provider].storageKey, key);
-                // We don't close the panel automatically anymore since there are multiple settings
                 alert('API Key Saved'); 
             }
         }
 
         function toggleSettings() {
             document.getElementById('settingsPanel').classList.toggle('hidden');
+        }
+
+        function toggleFocusMode() {
+            isFocusMode = !isFocusMode;
+            const btn = document.getElementById('focusBtn');
+            const container = document.getElementById('resultsContainer');
+            
+            if (isFocusMode) {
+                btn.classList.add('focus-active');
+                btn.classList.remove('bg-slate-800', 'text-gray-400');
+                // Hide all cards that have 'status-wait' class
+                const cards = container.querySelectorAll('.status-wait');
+                cards.forEach(card => card.style.display = 'none');
+            } else {
+                btn.classList.remove('focus-active');
+                btn.classList.add('bg-slate-800', 'text-gray-400');
+                // Show all cards
+                const cards = container.querySelectorAll('.glass-card');
+                cards.forEach(card => card.style.display = 'block');
+            }
         }
 
         function clearInputs() {
@@ -266,7 +295,6 @@
             }
         }
 
-        // --- TIMER ---
         function updateClock() {
             const now = new Date();
             const marketClose = new Date();
@@ -286,7 +314,6 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        // --- FETCHING ---
         async function fetchTickerData(ticker, provider, apiKey) {
             if (provider === 'twelvedata') {
                 const quote = await fetch(`https://api.twelvedata.com/quote?symbol=${ticker}&apikey=${apiKey}`);
@@ -303,7 +330,6 @@
             }
         }
 
-        // --- CALCULATION ---
         async function calculateAll() {
             const riskVal = parseFloat(document.getElementById('riskValue').value) || 500;
             const slippageVal = parseFloat(document.getElementById('slippageValue').value) || 0;
@@ -334,6 +360,8 @@
 
             errorMsg.classList.add('hidden');
             btn.innerText = 'FETCHING...';
+            // Don't clear container immediately if you want to keep focus mode state smooth, 
+            // but for simplicity we clear to avoid duplicates.
             container.innerHTML = '';
             
             const startTime = performance.now();
@@ -357,6 +385,12 @@
                     else renderError(res, container);
                 });
 
+                // Re-apply focus mode if it was active
+                if (isFocusMode) {
+                    const cards = container.querySelectorAll('.status-wait');
+                    cards.forEach(card => card.style.display = 'none');
+                }
+
                 const metricDiv = document.createElement('div');
                 metricDiv.className = 'text-center text-[10px] text-gray-500 font-mono mt-4';
                 metricDiv.innerText = `Fetched ${results.length} tickers in ${fetchTime}s`;
@@ -379,9 +413,8 @@
             let typeColor = isGreenDay ? "text-emerald-400" : "text-rose-400";
             let stopPrice = isGreenDay ? (l - 0.01) : (h + 0.01);
             
-            // MATH WITH SLIPPAGE: Risk per share increases by the slippage amount
             let riskPerShare = isGreenDay ? (c - stopPrice) : (stopPrice - c);
-            riskPerShare += slippage; // Buffer added to risk per share
+            riskPerShare += slippage; 
 
             let shares = 0;
             if (riskPerShare > 0) shares = Math.floor(risk / riskPerShare);
@@ -437,10 +470,8 @@
         }
 
         function copyToClipboard(text, element) {
-            // Remove commas for copying
             const cleanText = text.replace(/,/g, '');
             navigator.clipboard.writeText(cleanText).then(() => {
-                // Visual feedback
                 const valSpan = element.querySelector('.share-val');
                 const msgSpan = element.querySelector('.copy-msg');
                 
