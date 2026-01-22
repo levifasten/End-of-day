@@ -88,19 +88,17 @@
         
         /* Toggles Active State */
         .toggle-active {
-            background-color: #8b5cf6 !important; /* Purple */
+            background-color: #8b5cf6 !important;
             color: white !important;
             border-color: #a78bfa !important;
             box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
         }
         .voice-active {
-            background-color: #0ea5e9 !important; /* Sky Blue */
+            background-color: #0ea5e9 !important;
             color: white !important;
             border-color: #38bdf8 !important;
             box-shadow: 0 0 15px rgba(14, 165, 233, 0.4);
         }
-
-        /* Checkbox Styling */
         .custom-checkbox {
             accent-color: #3b82f6;
             width: 1rem;
@@ -218,7 +216,7 @@
         </div>
     </div>
 
-    <!-- UI Controls (Focus & Voice) -->
+    <!-- UI Controls -->
     <div class="w-full max-w-2xl flex justify-end mb-2 gap-2" id="uiControls">
         <button id="focusBtn" onclick="toggleFocusMode()" class="hidden bg-slate-800 text-gray-400 border border-slate-600 px-3 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center gap-2">
             <span class="text-xs">👁</span> Focus
@@ -236,12 +234,10 @@
             twelvedata: { name: 'Twelve Data', storageKey: 'twelvedata_key' }
         };
 
-        // UI States
         let isFocusMode = false;
         let isVoiceEnabled = false;
 
         function loadSettings() {
-            // Basic Inputs
             const savedRisk = localStorage.getItem('riskValue');
             const savedProvider = localStorage.getItem('selectedProvider');
             const savedSlippage = localStorage.getItem('slippageValue');
@@ -252,7 +248,6 @@
             
             updateApiKeyInput();
 
-            // Tickers
             document.querySelectorAll('.ticker-input').forEach(input => {
                 input.value = localStorage.getItem(`ticker_${input.dataset.idx}`) || '';
             });
@@ -260,9 +255,8 @@
                 input.value = localStorage.getItem(`trigger_${input.dataset.idx}`) || '';
             });
 
-            // UI Visibility Settings
-            const showFocus = localStorage.getItem('setting_showFocus') !== 'false'; // Default true
-            const showVoice = localStorage.getItem('setting_showVoice') === 'true'; // Default false for safety
+            const showFocus = localStorage.getItem('setting_showFocus') !== 'false';
+            const showVoice = localStorage.getItem('setting_showVoice') === 'true';
 
             document.getElementById('showFocusSetting').checked = showFocus;
             document.getElementById('showVoiceSetting').checked = showVoice;
@@ -284,7 +278,6 @@
         function updateUIControls() {
             const showFocus = document.getElementById('showFocusSetting').checked;
             const showVoice = document.getElementById('showVoiceSetting').checked;
-
             const focusBtn = document.getElementById('focusBtn');
             const voiceBtn = document.getElementById('voiceBtn');
 
@@ -348,11 +341,9 @@
         function toggleVoice() {
             isVoiceEnabled = !isVoiceEnabled;
             const btn = document.getElementById('voiceBtn');
-            
             if (isVoiceEnabled) {
                 btn.classList.add('voice-active');
                 btn.classList.remove('bg-slate-800', 'text-gray-400');
-                // Test sound
                 const u = new SpeechSynthesisUtterance("Voice Enabled");
                 u.volume = 0.5;
                 window.speechSynthesis.speak(u);
@@ -365,14 +356,11 @@
 
         function speakResults(results) {
             if (!isVoiceEnabled) return;
-            
-            // Filter only successful calls that met a trigger
             const activeTriggers = results.filter(r => {
                 if (!r.success) return false;
                 const { c, pc } = r.data;
                 const isGreenDay = c > pc;
                 const trigger = r.trigger;
-                
                 if (!trigger) return false;
                 if (isGreenDay && c >= trigger) return true;
                 if (!isGreenDay && c <= trigger) return true;
@@ -380,26 +368,18 @@
             });
 
             if (activeTriggers.length === 0) return;
-
-            // Queue speech
             activeTriggers.forEach(item => {
                 const { ticker, data } = item;
                 const risk = parseFloat(document.getElementById('riskValue').value) || 500;
                 const slippage = parseFloat(document.getElementById('slippageValue').value) || 0;
                 const isGreenDay = data.c > data.pc;
-                
-                // Recalculate shares for speech
                 const stopPrice = isGreenDay ? (data.l - 0.01) : (data.h + 0.01);
                 let riskPerShare = Math.abs(data.c - stopPrice) + slippage;
                 let shares = riskPerShare > 0 ? Math.floor(risk / riskPerShare) : 0;
-                
                 const dir = isGreenDay ? "Long" : "Short";
-                // Text: "Nvidia Long. 400 Shares."
                 const text = `${ticker}. ${dir}. ${shares} Shares.`;
-                
                 const utterance = new SpeechSynthesisUtterance(text);
-                utterance.rate = 1.1; // Slightly faster
-                utterance.pitch = 1.0;
+                utterance.rate = 1.1;
                 window.speechSynthesis.speak(utterance);
             });
         }
@@ -478,7 +458,6 @@
 
             errorMsg.classList.add('hidden');
             btn.innerText = 'FETCHING...';
-            // Clear current results
             container.innerHTML = '';
             
             const startTime = performance.now();
@@ -502,10 +481,8 @@
                     else renderError(res, container);
                 });
 
-                // Voice Announce
                 speakResults(results);
 
-                // Re-apply focus mode
                 if (isFocusMode) {
                     const cards = container.querySelectorAll('.status-wait');
                     cards.forEach(card => card.style.display = 'none');
@@ -551,23 +528,27 @@
             
             const html = `
                 <div class="glass-card rounded-xl p-5 animate-fade-in ${statusClass}">
-                    <div class="flex justify-between items-start mb-2 pb-2 border-b border-white/5">
-                        <div>
-                            <h2 class="text-3xl font-black text-white tracking-tight">${ticker}</h2>
-                            <div class="text-sm font-black ${typeColor} mt-1">${setupType}</div>
+                    <div class="flex justify-between items-end mb-2 pb-2 border-b border-white/5">
+                        <div class="text-left">
+                            <h2 class="text-3xl font-black text-white tracking-tight leading-none">${ticker}</h2>
+                            <div class="text-sm font-black ${typeColor} mt-1 leading-none">${setupType}</div>
                         </div>
+                        
+                        ${trigger ? `<div class="text-[12px] font-mono font-bold text-gray-400 pb-1">TRIG: $${trigger.toFixed(2)}</div>` : '<div></div>'}
+                        
                         <div class="text-right">
-                            <div class="text-2xl font-bold text-blue-400">$${c.toFixed(2)}</div>
-                            <div class="text-[10px] ${isGreenDay ? 'text-green-400' : 'text-red-400'} font-bold font-mono">
+                            <div class="text-2xl font-bold text-blue-400 leading-none">$${c.toFixed(2)}</div>
+                            <div class="text-[10px] ${isGreenDay ? 'text-green-400' : 'text-red-400'} font-bold font-mono mt-1">
                                 ${changePct}%
-                            </div>
-                            <div class="text-[10px] text-gray-500 font-mono mt-1">
-                                H: <span class="text-gray-400">${h.toFixed(2)}</span> L: <span class="text-gray-400">${l.toFixed(2)}</span>
                             </div>
                         </div>
                     </div>
+                    
+                    <div class="text-right text-[10px] text-gray-500 font-mono -mt-2 mb-3">
+                         H: <span class="text-gray-400">${h.toFixed(2)}</span> L: <span class="text-gray-400">${l.toFixed(2)}</span>
+                    </div>
 
-                    <div class="grid grid-cols-2 gap-4 mt-3">
+                    <div class="grid grid-cols-2 gap-4">
                         <div class="bg-slate-900/40 rounded p-2 text-center border border-white/5 copy-hover transition-colors group" onclick="copyToClipboard('${shares}', this)">
                             <div class="text-[9px] text-gray-500 uppercase font-bold group-hover:text-blue-300">Shares (Click to Copy)</div>
                             <div class="text-2xl font-mono font-bold text-white relative">
@@ -580,7 +561,6 @@
                             <div class="text-2xl font-mono font-bold text-red-400">${stopPrice.toFixed(2)}</div>
                         </div>
                     </div>
-                    ${trigger ? `<div class="text-center mt-2 text-[10px] text-gray-500 font-mono">Trigger: $${trigger.toFixed(2)}</div>` : ''}
                 </div>
             `;
             
@@ -594,11 +574,9 @@
             navigator.clipboard.writeText(cleanText).then(() => {
                 const valSpan = element.querySelector('.share-val');
                 const msgSpan = element.querySelector('.copy-msg');
-                
                 valSpan.classList.add('opacity-0');
                 msgSpan.classList.remove('opacity-0');
                 msgSpan.classList.add('copy-feedback');
-                
                 setTimeout(() => {
                     valSpan.classList.remove('opacity-0');
                     msgSpan.classList.add('opacity-0');
