@@ -112,7 +112,7 @@
     <div class="glass-card rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden ring-1 ring-white/10 mb-8 relative">
         <!-- Market Timer -->
         <div class="absolute top-4 right-4 text-[10px] font-mono text-gray-500 font-bold">
-            CLOSE IN: <span id="countdown" class="text-gray-400">--:--:--</span>
+            CLOSE IN: <span id="countdown" class="text-gray-400">CLOSED</span>
         </div>
 
         <!-- Header -->
@@ -395,19 +395,52 @@
 
         function updateClock() {
             const now = new Date();
-            const marketClose = new Date();
-            marketClose.setHours(16, 0, 0, 0); 
-            
-            let diff = marketClose - now;
-            if (diff < 0) {
-                document.getElementById('countdown').innerText = "CLOSED";
+            const h = now.getHours();
+            const m = now.getMinutes();
+            const s = now.getSeconds();
+            const day = now.getDay(); // 0 = Sun, 6 = Sat
+
+            const countdownEl = document.getElementById('countdown');
+
+            // 1. Weekend Check
+            if (day === 0 || day === 6) {
+                countdownEl.innerText = "CLOSED";
+                countdownEl.classList.remove('text-white', 'text-red-500');
+                countdownEl.classList.add('text-gray-400');
                 return;
             }
-            const h = Math.floor(diff / (1000 * 60 * 60));
-            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const s = Math.floor((diff % (1000 * 60)) / 1000);
-            document.getElementById('countdown').innerText = 
-                `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+            const totalMinutes = (h * 60) + m;
+            const marketOpenMinutes = (9 * 60) + 30; // 9:30 AM
+            const marketCloseMinutes = (16 * 60);    // 4:00 PM
+
+            // 2. Pre-Market / Post-Market Check
+            if (totalMinutes < marketOpenMinutes || totalMinutes >= marketCloseMinutes) {
+                countdownEl.innerText = "CLOSED";
+                countdownEl.classList.remove('text-white', 'text-red-500');
+                countdownEl.classList.add('text-gray-400');
+            } else {
+                // 3. Active Session Countdown to 4:00 PM
+                const closeTime = new Date();
+                closeTime.setHours(16, 0, 0, 0);
+                const diff = closeTime - now;
+
+                const hh = Math.floor(diff / (1000 * 60 * 60));
+                const mm = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const ss = Math.floor((diff % (1000 * 60)) / 1000);
+
+                countdownEl.innerText = 
+                    `${hh}:${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')}`;
+                
+                // Color logic: Red if less than 5 mins
+                if (hh === 0 && mm < 5) {
+                    countdownEl.classList.remove('text-gray-400');
+                    countdownEl.classList.add('text-red-500');
+                } else {
+                    countdownEl.classList.remove('text-gray-400', 'text-red-500');
+                    countdownEl.classList.add('text-white');
+                }
+            }
         }
         setInterval(updateClock, 1000);
         updateClock();
