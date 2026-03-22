@@ -29,11 +29,6 @@
             border-color: #3b82f6;
             box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
         }
-        .super-input::placeholder {
-            color: #d1d5db !important;
-            font-weight: 600;
-            text-transform: none;
-        }
         .trigger-input {
             font-size: 0.875rem;
             padding: 0.5rem;
@@ -41,15 +36,13 @@
             color: #ffffff !important;
             font-weight: 700 !important;
             border: 1px solid #374151 !important;
-        }
-        .trigger-input::placeholder {
-            color: #6b7280 !important;
-            font-weight: 500 !important;
+            text-align: center;
         }
         .risk-input {
             font-size: 1.5rem;
-            padding-left: 2.5rem;
-            text-align: left;
+            text-align: center;
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
         }
         .glass-card {
             background: rgba(30, 41, 59, 0.7);
@@ -61,578 +54,763 @@
             to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-in {
-            animation: fadeIn 0.4s ease-out forwards;
+            animation: fadeIn 0.3s ease-out forwards;
         }
-        .trigger-met {
+        
+        /* UPDATED VISUAL STATES */
+        .status-active-long {
             border: 2px solid #10b981 !important;
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4) !important;
+            background: linear-gradient(180deg, rgba(6, 78, 59, 0.4) 0%, rgba(30, 41, 59, 0.7) 100%) !important;
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2) !important;
         }
-        .trigger-met-short {
+        .status-active-short {
             border: 2px solid #ef4444 !important;
-            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4) !important;
+            background: linear-gradient(180deg, rgba(127, 29, 29, 0.4) 0%, rgba(30, 41, 59, 0.7) 100%) !important;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.2) !important;
         }
-        .not-triggered {
-            opacity: 0.4;
-            filter: grayscale(50%);
+        .status-wait {
+            opacity: 0.5;
+            filter: grayscale(90%);
+            border: 1px solid rgba(255,255,255,0.05);
         }
-        .api-selector {
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.3);
+        
+        .copy-hover:hover {
+            cursor: pointer;
+            background-color: rgba(255,255,255,0.1);
         }
-        .ws-badge {
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 9999px;
-            font-weight: 800;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
+        .copy-feedback {
+            animation: fadeOut 1s forwards;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        
+        /* Toggles Active State */
+        .toggle-active {
+            background-color: #8b5cf6 !important;
+            color: white !important;
+            border-color: #a78bfa !important;
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+        }
+        .voice-active {
+            background-color: #0ea5e9 !important;
+            color: white !important;
+            border-color: #38bdf8 !important;
+            box-shadow: 0 0 15px rgba(14, 165, 233, 0.4);
+        }
+        .custom-checkbox {
+            accent-color: #3b82f6;
+            width: 1rem;
+            height: 1rem;
+            cursor: pointer;
         }
     </style>
 </head>
 <body class="min-h-screen p-4 text-gray-100 flex flex-col items-center">
 
-    <div class="glass-card rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden ring-1 ring-white/10 mb-8">
+    <div class="glass-card rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden ring-1 ring-white/10 mb-8 relative">
+        <!-- Market Timer -->
+        <div class="absolute top-4 right-4 text-[10px] font-mono text-gray-500 font-bold">
+            CLOSE IN: <span id="countdown" class="text-gray-400">CLOSED</span>
+        </div>
+
+        <!-- Header -->
         <div class="bg-slate-900/50 p-6 border-b border-white/10 text-center">
             <h1 class="text-2xl font-black tracking-tight text-white uppercase">Position Size Calculator</h1>
-            <p class="text-blue-400 text-xs font-bold tracking-widest uppercase mt-1">Multi-Ticker • Real-Time Data • Smart Triggers</p>
+            
         </div>
 
-        <div class="p-4 bg-blue-900/10 border-b border-blue-500/20">
-            <div class="flex flex-col gap-2">
-                <label class="font-bold text-blue-200 text-sm">Select Data Provider:</label>
-                <select id="apiProvider" class="bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 focus:outline-none focus:border-blue-500 font-bold">
-                    <option value="finnhub">Finnhub (REST)</option>
-                    <option value="twelvedata">Twelve Data (REST)</option>
-                    <option value="stockdata">StockData.org (REST)</option>
-                    <option value="realtimefinance">RealtimeFinance (WebSocket)</option>
-                </select>
-                <div id="apiKeySection" class="mt-2">
-                    <div class="flex gap-2">
-                        <input type="password" id="apiKeyInput" placeholder="Enter API Key (if required)" class="w-full bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 focus:outline-none focus:border-blue-500">
-                        <button onclick="saveKey()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-bold transition-colors whitespace-nowrap">SAVE</button>
+        <!-- Settings Toggle -->
+        <div class="p-2 bg-blue-900/10 border-b border-blue-500/20 text-center">
+            <span class="text-[10px] font-bold text-blue-300 uppercase cursor-pointer hover:text-white flex justify-center items-center gap-1" onclick="toggleSettingsPanel()">
+                <span>⚙</span> SETTINGS
+            </span>
+        </div>
+        
+        <div id="settingsPanel" class="hidden p-4 bg-slate-900/50 border-b border-white/5 animate-fade-in">
+            <div class="flex flex-col gap-4">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">API Provider</label>
+                    <div class="flex flex-col gap-2">
+                        <select id="apiProvider" class="bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 text-sm font-bold">
+                            <option value="finnhub">Finnhub (REST)</option>
+                            <option value="twelvedata">Twelve Data (REST)</option>
+                            <option value="stockdata">StockData.org (REST)</option>
+                            <option value="realtimefinance">RealtimeFinance (WebSocket)</option>
+                        </select>
+                        <div class="flex gap-2">
+                            <input type="password" id="apiKeyInput" placeholder="Enter API Key" class="w-full bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 text-sm">
+                            <button onclick="saveKey()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-xs font-bold whitespace-nowrap">SAVE KEY</button>
+                        </div>
                     </div>
-                    <p class="text-[10px] text-gray-400 mt-2" id="apiInfo">
-                        Finnhub: <a href="https://finnhub.io" target="_blank" class="text-blue-400 underline">finnhub.io</a>
-                    </p>
-                    <p id="wsStatus" class="text-[10px] text-emerald-400 mt-1 hidden">
-                        <span class="ws-badge bg-emerald-900/70 text-emerald-300 border border-emerald-500/40">WebSocket LIVE</span>
-                        Prices auto-update from RealtimeFinance.io
-                    </p>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 border-t border-white/5 pt-2">
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Slippage Buffer ($)</label>
+                        <input type="number" id="slippageValue" step="0.01" class="w-full bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 text-sm font-bold" placeholder="0.00">
+                    </div>
+                    
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Interface</label>
+                        <div class="flex flex-col gap-2 pt-1">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <label class="flex items-center gap-2 cursor-pointer mb-2">
+                                <input type="checkbox" id="liveUpdateSetting" class="custom-checkbox" onchange="saveLiveUpdateSetting()">
+                                <span class="text-xs text-gray-300">Live Auto-Update (WebSocket)</span>
+                            </label>
+                            <input type="checkbox" id="showFocusSetting" class="custom-checkbox" onchange="updateUIControls()">
+                                <span class="text-xs text-gray-300">Show Focus Button</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="showVoiceSetting" class="custom-checkbox" onchange="updateUIControls()">
+                                <span class="text-xs text-gray-300">Show Voice Button</span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- Inputs -->
         <div class="p-6 space-y-6">
-            <div class="space-y-2">
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Risk Per Trade ($)</label>
-                <div class="relative">
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-800 font-extrabold text-xl z-10 pointer-events-none">$</span>
-                    <input type="number" id="riskValue" class="super-input risk-input" placeholder="Example: 500" value="950">
+            <div class="space-y-2 flex flex-col items-center">
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider text-center">Risk Per Trade ($)</label>
+                <div class="w-full max-w-xs">
+                    <input type="number" id="riskValue" class="super-input risk-input" placeholder="500" value="500">
                 </div>
             </div>
 
             <div class="space-y-2">
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Enter Tickers & Trigger Prices (Up to 5)</label>
-                <p class="text-[10px] text-gray-500 ml-1">LONG: Stock UP on day + above trigger | SHORT: Stock DOWN on day + below trigger</p>
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <div class="flex flex-col gap-2">
-                        <input type="text" class="super-input ticker-input" placeholder="Ticker">
-                        <input type="number" step="0.01" class="trigger-input" placeholder="Trigger $">
+                <div class="flex justify-end">
+                    <button onclick="clearInputs()" class="text-[10px] text-red-400 font-bold hover:text-red-300 mb-1">CLEAR</button>
+                </div>
+                
+                <!-- Dynamic Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-2 gap-3" id="inputGrid">
+                    <!-- Ticker 0 & 1 (Default) -->
+                    <div class="flex flex-col gap-2 ticker-group" id="group-0">
+                        <input type="text" class="super-input ticker-input" data-idx="0" placeholder="TICKER">
+                        <input type="number" step="0.01" class="trigger-input" data-idx="0" placeholder="Trigger $">
                     </div>
-                    <div class="flex flex-col gap-2">
-                        <input type="text" class="super-input ticker-input" placeholder="Ticker">
-                        <input type="number" step="0.01" class="trigger-input" placeholder="Trigger $">
+                    <div class="flex flex-col gap-2 ticker-group" id="group-1">
+                        <input type="text" class="super-input ticker-input" data-idx="1" placeholder="TICKER">
+                        <input type="number" step="0.01" class="trigger-input" data-idx="1" placeholder="Trigger $">
                     </div>
-                    <div class="flex flex-col gap-2">
-                        <input type="text" class="super-input ticker-input" placeholder="Ticker">
-                        <input type="number" step="0.01" class="trigger-input" placeholder="Trigger $">
+                    
+                    <!-- Ticker 2 & 3 -->
+                    <div class="flex flex-col gap-2 ticker-group hidden" id="group-2">
+                        <input type="text" class="super-input ticker-input" data-idx="2" placeholder="TICKER">
+                        <input type="number" step="0.01" class="trigger-input" data-idx="2" placeholder="Trigger $">
                     </div>
-                    <div class="flex flex-col gap-2">
-                        <input type="text" class="super-input ticker-input" placeholder="Ticker">
-                        <input type="number" step="0.01" class="trigger-input" placeholder="Trigger $">
+                    <div class="flex flex-col gap-2 ticker-group hidden" id="group-3">
+                        <input type="text" class="super-input ticker-input" data-idx="3" placeholder="TICKER">
+                        <input type="number" step="0.01" class="trigger-input" data-idx="3" placeholder="Trigger $">
                     </div>
-                    <div class="flex flex-col gap-2">
-                        <input type="text" class="super-input ticker-input" placeholder="Ticker">
-                        <input type="number" step="0.01" class="trigger-input" placeholder="Trigger $">
+
+                    <!-- Ticker 4 & 5 -->
+                    <div class="flex flex-col gap-2 ticker-group hidden" id="group-4">
+                        <input type="text" class="super-input ticker-input" data-idx="4" placeholder="TICKER">
+                        <input type="number" step="0.01" class="trigger-input" data-idx="4" placeholder="Trigger $">
                     </div>
+                    <div class="flex flex-col gap-2 ticker-group hidden" id="group-5">
+                        <input type="text" class="super-input ticker-input" data-idx="5" placeholder="TICKER">
+                        <input type="number" step="0.01" class="trigger-input" data-idx="5" placeholder="Trigger $">
+                    </div>
+                </div>
+
+                <!-- Add Row Button -->
+                <div class="flex justify-center mt-2">
+                    <button id="addRowBtn" onclick="addMoreRows()" class="text-xs bg-slate-800 hover:bg-slate-700 text-blue-300 border border-blue-900/50 px-4 py-2 rounded-full font-bold transition-all">
+                        + ADD ROW
+                    </button>
                 </div>
             </div>
 
-            <button onclick="calculateAll()" id="calcBtn" class="w-full bg-gradient-to-br from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white px-6 py-4 rounded-xl font-black text-2xl shadow-lg shadow-green-900/50 transition-all active:scale-95">
-                CALCULATE ALL
+            <button onclick="calculateAll()" id="calcBtn" class="w-full bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white px-6 py-4 rounded-xl font-black text-2xl shadow-lg shadow-blue-900/50 transition-all active:scale-95 uppercase tracking-wide">
+                CALCULATE
             </button>
             
             <p id="errorMsg" class="text-red-400 font-bold text-sm text-center bg-red-900/20 py-2 rounded hidden"></p>
         </div>
     </div>
 
-    <div id="resultsContainer" class="w-full max-w-2xl space-y-6 pb-12"></div>
+    <!-- UI Controls -->
+    <div class="w-full max-w-2xl flex justify-end mb-2 gap-2" id="uiControls">
+        <button id="focusBtn" onclick="toggleFocusMode()" class="hidden bg-slate-800 text-gray-400 border border-slate-600 px-3 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center gap-2">
+            <span class="text-xs">👁</span> Focus
+        </button>
+        <button id="voiceBtn" onclick="toggleVoice()" class="hidden bg-slate-800 text-gray-400 border border-slate-600 px-3 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center gap-2">
+            <span class="text-xs">🔊</span> Voice
+        </button>
+    </div>
+
+    <div id="resultsContainer" class="w-full max-w-2xl space-y-4 pb-12"></div>
 
     <script>
-        // API Configuration
         const API_CONFIGS = {
-            finnhub: {
-                name: 'Finnhub',
-                infoUrl: 'https://finnhub.io',
-                storageKey: 'finnhub_key',
-                needsKey: true,
-                type: 'rest'
-            },
-            twelvedata: {
-                name: 'Twelve Data',
-                infoUrl: 'https://twelvedata.com',
-                storageKey: 'twelvedata_key',
-                needsKey: true,
-                type: 'rest'
-            },
-            stockdata: {
-                name: 'StockData.org',
-                infoUrl: 'https://www.stockdata.org',
-                storageKey: 'stockdata_key',
-                needsKey: true,
-                type: 'rest'
-            },
-            realtimefinance: {
-                name: 'RealtimeFinance.io',
-                infoUrl: 'https://realtimefinance.io',
-                storageKey: null,
-                needsKey: false,
-                type: 'websocket'
-            }
+            finnhub: { name: 'Finnhub', storageKey: 'finnhub_key', type: 'rest', needsKey: true },
+            twelvedata: { name: 'Twelve Data', storageKey: 'twelvedata_key', type: 'rest', needsKey: true },
+            stockdata: { name: 'StockData.org', storageKey: 'stockdata_key', type: 'rest', needsKey: true },
+            realtimefinance: { name: 'RealtimeFinance.io', storageKey: null, type: 'websocket', needsKey: false }
         };
 
-        let ws = null;
-        let wsSubscribedSymbols = new Set();
-        let latestWsQuotes = {}; // symbol -> {price, high, low, prevClose}
+        let realtimeSocket = null;
+        let realtimeTasks = [];
+        let realtimeQuotes = {};
+        let liveUpdateEnabled = localStorage.getItem('liveUpdateEnabled');
+        if (liveUpdateEnabled === null) liveUpdateEnabled = 'true';
+        liveUpdateEnabled = liveUpdateEnabled === 'true';
 
-        // Update API info when provider changes
-        document.getElementById('apiProvider').addEventListener('change', (e) => {
-            const providerKey = e.target.value;
-            const config = API_CONFIGS[providerKey];
-            const apiInfo = document.getElementById('apiInfo');
-            const apiKeyInput = document.getElementById('apiKeyInput');
-            const wsStatus = document.getElementById('wsStatus');
+        function saveLiveUpdateSetting() {
+            liveUpdateEnabled = document.getElementById('liveUpdateSetting').checked;
+            localStorage.setItem('liveUpdateEnabled', liveUpdateEnabled ? 'true' : 'false');
+        }
 
-            if (config.type === 'rest') {
-                apiInfo.innerHTML = `${config.name}: <a href="${config.infoUrl}" target="_blank" class="text-blue-400 underline">${config.infoUrl}</a>`;
-                apiKeyInput.disabled = !config.needsKey;
-                if (config.storageKey) {
-                    const savedKey = localStorage.getItem(config.storageKey) || '';
-                    apiKeyInput.value = savedKey;
+        let isFocusMode = false;
+        let isVoiceEnabled = false;
+        let visibleCount = 2; // Default 2 tickers
+
+        function loadSettings() {
+            const savedRisk = localStorage.getItem('riskValue');
+            const savedProvider = localStorage.getItem('selectedProvider');
+            const savedSlippage = localStorage.getItem('slippageValue');
+            const savedCount = localStorage.getItem('visibleCount');
+            
+            if (savedRisk) document.getElementById('riskValue').value = savedRisk;
+            if (savedProvider) document.getElementById('apiProvider').value = savedProvider;
+            if (savedSlippage) document.getElementById('slippageValue').value = savedSlippage;
+            if (savedCount) visibleCount = parseInt(savedCount);
+            
+            updateVisibleRows();
+            updateApiKeyInput();
+
+            document.querySelectorAll('.ticker-input').forEach(input => {
+                input.value = localStorage.getItem(`ticker_${input.dataset.idx}`) || '';
+            });
+            document.querySelectorAll('.trigger-input').forEach(input => {
+                input.value = localStorage.getItem(`trigger_${input.dataset.idx}`) || '';
+            });
+
+            const showFocus = localStorage.getItem('setting_showFocus') !== 'false';
+            const showVoice = localStorage.getItem('setting_showVoice') === 'true';
+
+            document.getElementById('showFocusSetting').checked = showFocus;
+            document.getElementById('showVoiceSetting').checked = showVoice;
+            
+            updateUIControls();
+        }
+
+        function addMoreRows() {
+            if (visibleCount < 6) {
+                visibleCount += 2;
+                localStorage.setItem('visibleCount', visibleCount);
+                updateVisibleRows();
+            }
+        }
+
+        function updateVisibleRows() {
+            // Show groups based on visibleCount
+            for (let i = 0; i < 6; i++) {
+                const group = document.getElementById(`group-${i}`);
+                if (i < visibleCount) {
+                    group.classList.remove('hidden');
                 } else {
-                    apiKeyInput.value = '';
+                    group.classList.add('hidden');
                 }
-                wsStatus.classList.add('hidden');
-                disconnectRealtimeFinance();
-            } else if (providerKey === 'realtimefinance') {
-                apiInfo.innerHTML = `RealtimeFinance.io: <a href="${config.infoUrl}" target="_blank" class="text-blue-400 underline">${config.infoUrl}</a> (No API key required)`;
-                apiKeyInput.value = '';
-                apiKeyInput.disabled = true;
-                wsStatus.classList.remove('hidden');
-                // WebSocket connection will be created when Calculate is pressed
             }
+            
+            // Hide button if max reached
+            const btn = document.getElementById('addRowBtn');
+            if (visibleCount >= 6) {
+                btn.classList.add('hidden');
+            } else {
+                btn.classList.remove('hidden');
+            }
+        }
+
+        function saveInputs() {
+            localStorage.setItem('riskValue', document.getElementById('riskValue').value);
+            localStorage.setItem('slippageValue', document.getElementById('slippageValue').value);
+            document.querySelectorAll('.ticker-input').forEach(input => {
+                localStorage.setItem(`ticker_${input.dataset.idx}`, input.value.toUpperCase());
+            });
+            document.querySelectorAll('.trigger-input').forEach(input => {
+                localStorage.setItem(`trigger_${input.dataset.idx}`, input.value);
+            });
+        }
+
+        function updateUIControls() {
+            const showFocus = document.getElementById('showFocusSetting').checked;
+            const showVoice = document.getElementById('showVoiceSetting').checked;
+            const focusBtn = document.getElementById('focusBtn');
+            const voiceBtn = document.getElementById('voiceBtn');
+
+            if(showFocus) focusBtn.classList.remove('hidden');
+            else focusBtn.classList.add('hidden');
+
+            if(showVoice) voiceBtn.classList.remove('hidden');
+            else voiceBtn.classList.add('hidden');
+
+            localStorage.setItem('setting_showFocus', showFocus);
+            localStorage.setItem('setting_showVoice', showVoice);
+        }
+
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', saveInputs);
+            input.addEventListener('keydown', (e) => { if(e.key === 'Enter') calculateAll(); });
+        });
+        
+        document.getElementById('apiProvider').addEventListener('change', (e) => {
+            localStorage.setItem('selectedProvider', e.target.value);
+            updateApiKeyInput();
         });
 
-        document.addEventListener('DOMContentLoaded', () => {
+        function updateApiKeyInput() {
             const provider = document.getElementById('apiProvider').value;
-            const cfg = API_CONFIGS[provider];
-            if (cfg.type === 'rest' && cfg.storageKey) {
-                const savedKey = localStorage.getItem(cfg.storageKey);
-                if (savedKey) {
-                    document.getElementById('apiKeyInput').value = savedKey;
-                }
+            const config = API_CONFIGS[provider];
+            const apiInput = document.getElementById('apiKeyInput');
+            if (config.needsKey) {
+                apiInput.disabled = false;
+                apiInput.placeholder = 'Enter API Key';
+                const key = localStorage.getItem(config.storageKey);
+                apiInput.value = key || '';
+            } else {
+                apiInput.disabled = true;
+                apiInput.placeholder = 'No API key needed';
+                apiInput.value = '';
             }
-        });
+        }
 
         function saveKey() {
             const provider = document.getElementById('apiProvider').value;
             const config = API_CONFIGS[provider];
             const key = document.getElementById('apiKeyInput').value.trim();
-            if (config.storageKey && key) {
+            if (config.needsKey && key) {
                 localStorage.setItem(config.storageKey, key);
-                showSuccess('API Key saved successfully!');
+                alert('API Key Saved'); 
             }
         }
 
-        function showSuccess(msg) {
-            const errorMsg = document.getElementById('errorMsg');
-            errorMsg.innerText = msg;
-            errorMsg.classList.remove('hidden', 'bg-red-900/20', 'text-red-400');
-            errorMsg.classList.add('bg-green-900/20', 'text-green-400');
-            setTimeout(() => errorMsg.classList.add('hidden'), 3000);
+        function toggleSettingsPanel() {
+            document.getElementById('settingsPanel').classList.toggle('hidden');
         }
 
-        // REST FETCHERS
-
-        async function fetchTwelveData(ticker, apiKey) {
-            const quoteUrl = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(ticker)}&apikey=${apiKey}`;
-            const res = await fetch(quoteUrl);
-            if (res.status === 429) throw new Error("Rate Limit");
-            const quote = await res.json();
-            if (quote.code || quote.status === 'error') throw new Error("Invalid Ticker");
-            return {
-                c: parseFloat(quote.close),
-                h: parseFloat(quote.high),
-                l: parseFloat(quote.low),
-                pc: parseFloat(quote.previous_close)
-            };
-        }
-
-        async function fetchFinnhub(ticker, apiKey) {
-            const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}&token=${apiKey}`;
-            const res = await fetch(quoteUrl);
-            if (res.status === 429) throw new Error("Rate Limit");
-            const data = await res.json();
-            if (!data || (data.c === 0 && data.d === null)) throw new Error("Invalid Ticker");
-            return {
-                c: data.c,
-                h: data.h || data.c,
-                l: data.l || data.c,
-                pc: data.pc
-            };
-        }
-
-        async function fetchStockDataOrg(ticker, apiKey) {
-            const url = `https://api.stockdata.org/v1/data/quote?symbols=${encodeURIComponent(ticker)}&api_token=${apiKey}`;
-            const res = await fetch(url);
-            if (res.status === 429) throw new Error("Rate Limit");
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            const json = await res.json();
-            if (!json.data || !json.data.length) throw new Error("Invalid Ticker");
-
-            const d = json.data[0]; // StockData.org structure [web:96]
-            // It exposes price, day_high, day_low, previous_close_price. [web:96]
-            return {
-                c: Number(d.price),
-                h: Number(d.day_high ?? d.price),
-                l: Number(d.day_low ?? d.price),
-                pc: Number(d.previous_close_price ?? d.price)
-            };
-        }
-
-        async function fetchTickerData(ticker, provider, apiKey) {
-            switch(provider) {
-                case 'twelvedata':
-                    return await fetchTwelveData(ticker, apiKey);
-                case 'finnhub':
-                    return await fetchFinnhub(ticker, apiKey);
-                case 'stockdata':
-                    return await fetchStockDataOrg(ticker, apiKey);
-                default:
-                    throw new Error("Unknown provider");
+        function toggleFocusMode() {
+            isFocusMode = !isFocusMode;
+            const btn = document.getElementById('focusBtn');
+            const container = document.getElementById('resultsContainer');
+            
+            if (isFocusMode) {
+                btn.classList.add('toggle-active');
+                btn.classList.remove('bg-slate-800', 'text-gray-400');
+                const cards = container.querySelectorAll('.status-wait');
+                cards.forEach(card => card.style.display = 'none');
+            } else {
+                btn.classList.remove('toggle-active');
+                btn.classList.add('bg-slate-800', 'text-gray-400');
+                const cards = container.querySelectorAll('.glass-card');
+                cards.forEach(card => card.style.display = 'block');
             }
         }
 
-        // WEBSOCKET: REALTIME FINANCE (unofficial public WS) [web:83]
+        function toggleVoice() {
+            isVoiceEnabled = !isVoiceEnabled;
+            const btn = document.getElementById('voiceBtn');
+            if (isVoiceEnabled) {
+                btn.classList.add('voice-active');
+                btn.classList.remove('bg-slate-800', 'text-gray-400');
+                const u = new SpeechSynthesisUtterance("Voice Enabled");
+                u.volume = 0.5;
+                window.speechSynthesis.speak(u);
+            } else {
+                btn.classList.remove('voice-active');
+                btn.classList.add('bg-slate-800', 'text-gray-400');
+                window.speechSynthesis.cancel();
+            }
+        }
 
-        function connectRealtimeFinance(symbols) {
-            disconnectRealtimeFinance();
-            wsSubscribedSymbols = new Set(symbols.map(s => s.toUpperCase()));
-            latestWsQuotes = {};
+        function speakResults(results) {
+            if (!isVoiceEnabled) return;
+            const activeTriggers = results.filter(r => {
+                if (!r.success) return false;
+                const { c, pc } = r.data;
+                const isGreenDay = c > pc;
+                const trigger = r.trigger;
+                if (!trigger) return false;
+                if (isGreenDay && c >= trigger) return true;
+                if (!isGreenDay && c <= trigger) return true;
+                return false;
+            });
 
-            if (wsSubscribedSymbols.size === 0) return;
+            if (activeTriggers.length === 0) return;
+            activeTriggers.forEach(item => {
+                const { ticker, data } = item;
+                const risk = parseFloat(document.getElementById('riskValue').value) || 500;
+                const slippage = parseFloat(document.getElementById('slippageValue').value) || 0;
+                const isGreenDay = data.c > data.pc;
+                const stopPrice = isGreenDay ? (data.l - 0.01) : (data.h + 0.01);
+                let riskPerShare = Math.abs(data.c - stopPrice) + slippage;
+                let shares = riskPerShare > 0 ? Math.floor(risk / riskPerShare) : 0;
+                const dir = isGreenDay ? "Long" : "Short";
+                const text = `${ticker}. ${dir}. ${shares} Shares.`;
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1.1;
+                window.speechSynthesis.speak(utterance);
+            });
+        }
 
-            try {
-                ws = new WebSocket("wss://ws.realtimefinance.io"); // base from project docs [web:83]
-            } catch (e) {
-                console.error(e);
-                const errorMsg = document.getElementById('errorMsg');
-                errorMsg.innerText = "Could not open RealtimeFinance WebSocket.";
-                errorMsg.classList.remove('hidden', 'bg-green-900/20', 'text-green-400');
-                errorMsg.classList.add('bg-red-900/20', 'text-red-400');
+        function clearInputs() {
+            if(confirm('Clear all inputs?')) {
+                document.querySelectorAll('.ticker-input').forEach(i => i.value = '');
+                document.querySelectorAll('.trigger-input').forEach(i => i.value = '');
+                saveInputs();
+                document.getElementById('resultsContainer').innerHTML = '';
+            }
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const h = now.getHours();
+            const m = now.getMinutes();
+            const s = now.getSeconds();
+            const day = now.getDay(); 
+
+            const countdownEl = document.getElementById('countdown');
+
+            // Weekend Check
+            if (day === 0 || day === 6) {
+                countdownEl.innerText = "CLOSED";
+                countdownEl.classList.remove('text-white', 'text-red-500');
+                countdownEl.classList.add('text-gray-400');
                 return;
             }
 
-            ws.onopen = () => {
-                // Project subscribes by sending JSON with symbols array; check repo for exact format. [web:83]
-                const payload = {
-                    symbols: Array.from(wsSubscribedSymbols)
-                };
-                ws.send(JSON.stringify(payload));
-            };
+            const totalMinutes = (h * 60) + m;
+            const marketOpenMinutes = (9 * 60) + 30; 
+            const marketCloseMinutes = (16 * 60);    
 
-            ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    // Example from docs: { price, volume, time, symbol, market } [web:83]
-                    if (!data || !data.symbol || data.price == null) return;
-                    const sym = String(data.symbol).toUpperCase();
-                    if (!wsSubscribedSymbols.has(sym)) return;
+            if (totalMinutes < marketOpenMinutes || totalMinutes >= marketCloseMinutes) {
+                countdownEl.innerText = "CLOSED";
+                countdownEl.classList.remove('text-white', 'text-red-500');
+                countdownEl.classList.add('text-gray-400');
+            } else {
+                const closeTime = new Date();
+                closeTime.setHours(16, 0, 0, 0);
+                const diff = closeTime - now;
 
-                    // We don't get high/low/prevClose from this API, so approximate:
-                    const prevQuote = latestWsQuotes[sym];
-                    const price = Number(data.price);
+                const hh = Math.floor(diff / (1000 * 60 * 60));
+                const mm = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const ss = Math.floor((diff % (1000 * 60)) / 1000);
 
-                    const high = prevQuote ? Math.max(prevQuote.h, price) : price;
-                    const low = prevQuote ? Math.min(prevQuote.l, price) : price;
-                    const pc = prevQuote ? prevQuote.pc : price; // fallback
-
-                    latestWsQuotes[sym] = {
-                        c: price,
-                        h: high,
-                        l: low,
-                        pc: pc
-                    };
-
-                    // Update the card in place if it exists
-                    const container = document.getElementById('resultsContainer');
-                    const card = container.querySelector(`[data-ticker="${sym}"]`);
-                    if (card) {
-                        const riskAmount = parseFloat(document.getElementById('riskValue').value) || 0;
-                        const triggerInputs = Array.from(document.querySelectorAll('.ticker-input')).map((el, idx) => {
-                            const trigVal = parseFloat(document.querySelectorAll('.trigger-input')[idx].value) || null;
-                            return { ticker: el.value.trim().toUpperCase(), trigger: trigVal };
-                        });
-                        const trigObj = triggerInputs.find(t => t.ticker === sym);
-                        const triggerPrice = trigObj ? trigObj.trigger : null;
-
-                        // Rebuild card inner content
-                        const html = buildResultCardHTML(sym, latestWsQuotes[sym], riskAmount, triggerPrice);
-                        card.innerHTML = html;
-                    }
-                } catch (err) {
-                    console.error("WS message error", err);
+                countdownEl.innerText = 
+                    `${hh}:${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')}`;
+                
+                if (hh === 0 && mm < 5) {
+                    countdownEl.classList.remove('text-gray-400');
+                    countdownEl.classList.add('text-red-500');
+                } else {
+                    countdownEl.classList.remove('text-gray-400', 'text-red-500');
+                    countdownEl.classList.add('text-white');
                 }
-            };
+            }
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
 
-            ws.onerror = (e) => {
-                console.error("WebSocket error", e);
-            };
-
-            ws.onclose = () => {
-                // No auto-reconnect for now to keep it simple
-            };
+        async function fetchTickerData(ticker, provider, apiKey) {
+            if (provider === 'twelvedata') {
+                const quote = await fetch(`https://api.twelvedata.com/quote?symbol=${ticker}&apikey=${apiKey}`);
+                if (!quote.ok) throw new Error("API Error");
+                const d = await quote.json();
+                if (d.code) throw new Error(d.message);
+                return { c: parseFloat(d.close), h: parseFloat(d.high), l: parseFloat(d.low), pc: parseFloat(d.previous_close) };
+            } else if (provider === 'finnhub') {
+                const quote = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`);
+                if (quote.status === 429) throw new Error("Rate Limit");
+                const d = await quote.json();
+                if (d.c === 0 && d.d === null) throw new Error("Invalid");
+                return { c: d.c, h: d.h, l: d.l, pc: d.pc };
+            } else if (provider === 'stockdata') {
+                const quote = await fetch(`https://api.stockdata.org/v1/data/quote?symbols=${encodeURIComponent(ticker)}&api_token=${apiKey}`);
+                if (quote.status === 429) throw new Error("Rate Limit");
+                if (!quote.ok) throw new Error("API Error");
+                const d_res = await quote.json();
+                if (!d_res.data || !d_res.data.length) throw new Error("Invalid Ticker");
+                const d = d_res.data[0];
+                return { 
+                    c: Number(d.price), 
+                    h: Number(d.day_high ?? d.price), 
+                    l: Number(d.day_low ?? d.price), 
+                    pc: Number(d.previous_close_price ?? d.price) 
+                };
+            }
+            throw new Error("Unknown provider");
         }
 
         function disconnectRealtimeFinance() {
-            if (ws) {
-                try { ws.close(); } catch(e) {}
+            if (realtimeSocket) {
+                try { realtimeSocket.close(); } catch (e) {}
             }
-            ws = null;
-            wsSubscribedSymbols = new Set();
-            latestWsQuotes = {};
+            realtimeSocket = null;
         }
 
-        async function calculateAll() {
-            const riskVal = parseFloat(document.getElementById('riskValue').value);
-            const tickerInputs = Array.from(document.querySelectorAll('.ticker-input'));
-            const triggerInputs = Array.from(document.querySelectorAll('.trigger-input'));
-            
-            const tickerData = tickerInputs.map((input, index) => ({
-                ticker: input.value.trim().toUpperCase(),
-                trigger: parseFloat(triggerInputs[index].value) || null
-            })).filter(item => item.ticker !== "");
-            
-            const provider = document.getElementById('apiProvider').value;
-            
-            const btn = document.getElementById('calcBtn');
-            const container = document.getElementById('resultsContainer');
-            const errorMsg = document.getElementById('errorMsg');
-            const cfg = API_CONFIGS[provider];
+        function renderRealtimeSnapshot(container, riskVal, slippageVal) {
+            container.innerHTML = '';
+            const results = realtimeTasks.map(task => {
+                const data = realtimeQuotes[task.ticker];
+                if (data) return { ...task, data, success: true };
+                return { ...task, error: 'Waiting for live quote...', success: false };
+            });
 
-            if (tickerData.length === 0) {
-                errorMsg.innerText = "Enter at least one ticker.";
-                errorMsg.classList.remove('hidden', 'bg-green-900/20', 'text-green-400');
-                errorMsg.classList.add('bg-red-900/20', 'text-red-400');
+            results.forEach(res => {
+                if (res.success) renderCard(res, riskVal, slippageVal, container);
+                else renderError(res, container);
+            });
+
+            if (isFocusMode) {
+                const cards = container.querySelectorAll('.status-wait');
+                cards.forEach(card => card.style.display = 'none');
+            }
+
+            const metricDiv = document.createElement('div');
+            metricDiv.className = 'text-center text-[10px] text-gray-500 font-mono mt-4';
+            metricDiv.innerText = liveUpdateEnabled
+                ? `Live WebSocket active • ${results.filter(r => r.success).length}/${results.length} quotes`
+                : `Manual WebSocket snapshot • ${results.filter(r => r.success).length}/${results.length} quotes`;
+            container.appendChild(metricDiv);
+        }
+
+        function startRealtimeFinance(tasks, riskVal, slippageVal, container) {
+            disconnectRealtimeFinance();
+            realtimeTasks = tasks.map(t => ({ ...t, ticker: t.ticker.toUpperCase() }));
+            realtimeQuotes = {};
+
+            try {
+                realtimeSocket = new WebSocket('wss://ws.realtimefinance.io');
+            } catch (e) {
+                renderError({ticker: "WebSocket", error: "Connection Failed"}, container);
                 return;
             }
 
+            realtimeSocket.onopen = () => {
+                realtimeSocket.send(JSON.stringify({
+                    symbols: realtimeTasks.map(t => t.ticker)
+                }));
+            };
+
+            realtimeSocket.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (!msg || !msg.symbol || msg.price == null) return;
+
+                    const ticker = String(msg.symbol).toUpperCase();
+                    const price = Number(msg.price);
+                    if (!Number.isFinite(price)) return;
+
+                    const prev = realtimeQuotes[ticker];
+                    realtimeQuotes[ticker] = {
+                        c: price,
+                        h: prev ? Math.max(prev.h, price) : price,
+                        l: prev ? Math.min(prev.l, price) : price,
+                        pc: prev ? prev.pc : price
+                    };
+
+                    renderRealtimeSnapshot(container, riskVal, slippageVal);
+
+                    if (!liveUpdateEnabled) {
+                        const gotAll = realtimeTasks.every(t => realtimeQuotes[t.ticker]);
+                        if (gotAll) disconnectRealtimeFinance();
+                    }
+                } catch (err) {}
+            };
+
+            realtimeSocket.onerror = () => {
+                const errorMsg = document.getElementById('errorMsg');
+                errorMsg.innerText = 'RealtimeFinance WebSocket failed.';
+                errorMsg.classList.remove('hidden');
+            };
+
+            if (!liveUpdateEnabled) {
+                setTimeout(() => {
+                    disconnectRealtimeFinance();
+                    renderRealtimeSnapshot(container, riskVal, slippageVal);
+                }, 4000); // 4 sec timeout to gather snapshot
+            }
+        }
+
+        async function calculateAll() {
+            const riskVal = parseFloat(document.getElementById('riskValue').value) || 500;
+            const slippageVal = parseFloat(document.getElementById('slippageValue').value) || 0;
+            const provider = document.getElementById('apiProvider').value;
+            const apiKey = localStorage.getItem(API_CONFIGS[provider].storageKey);
+            const container = document.getElementById('resultsContainer');
+            const btn = document.getElementById('calcBtn');
+            const errorMsg = document.getElementById('errorMsg');
+
+            if (!apiKey) {
+                errorMsg.innerText = "Please set API Key in Settings.";
+                errorMsg.classList.remove('hidden');
+                document.getElementById('settingsPanel').classList.remove('hidden');
+                return;
+            }
+            
+            const inputs = Array.from(document.querySelectorAll('.ticker-input'));
+            const triggers = Array.from(document.querySelectorAll('.trigger-input'));
+            
+            // Only process visible inputs based on visibleCount
+            const tasks = [];
+            for(let i=0; i<visibleCount; i++) {
+                 const ticker = inputs[i].value.trim().toUpperCase();
+                 const trigger = parseFloat(triggers[i].value);
+                 if (ticker) {
+                     tasks.push({ ticker, trigger });
+                 }
+            }
+
+            if (tasks.length === 0) return;
+
             errorMsg.classList.add('hidden');
-            container.innerHTML = ''; 
-            const originalBtnText = btn.innerHTML;
-            btn.innerHTML = '<span class="animate-pulse">⚡ FETCHING DATA...</span>';
+            btn.innerText = 'FETCHING...';
+            container.innerHTML = '';
             
             const startTime = performance.now();
 
             try {
-                if (cfg.type === 'websocket' && provider === 'realtimefinance') {
-                    // WebSocket mode: connect and build initial skeleton cards
-                    const symbols = tickerData.map(t => t.ticker);
-                    connectRealtimeFinance(symbols);
-
-                    tickerData.forEach(item => {
-                        const dummy = { c: 0, h: 0, l: 0, pc: 0 };
-                        createResultCard(item.ticker, dummy, riskVal, item.trigger, container, true);
-                    });
-
-                    const endTime = performance.now();
-                    const fetchTime = ((endTime - startTime) / 1000).toFixed(2);
-                    const perfDiv = document.createElement('div');
-                    perfDiv.className = 'text-center text-emerald-400 text-sm font-bold bg-emerald-900/20 py-2 rounded-lg';
-                    perfDiv.innerHTML = `⚡ Subscribed ${tickerData.length} ticker(s) to RealtimeFinance WebSocket in ${fetchTime}s`;
-                    container.appendChild(perfDiv);
-                } else {
-                    const apiKey = cfg.needsKey && cfg.storageKey ? localStorage.getItem(cfg.storageKey) : null;
-                    if (cfg.needsKey && !apiKey) {
-                        errorMsg.innerText = "Please enter and save your API Key above.";
-                        errorMsg.classList.remove('hidden', 'bg-green-900/20', 'text-green-400');
-                        errorMsg.classList.add('bg-red-900/20', 'text-red-400');
-                        btn.innerHTML = originalBtnText;
-                        return;
+                const promises = tasks.map(async (task) => {
+                    try {
+                        const data = await fetchTickerData(task.ticker, provider, apiKey);
+                        return { ...task, data, success: true };
+                    } catch (e) {
+                        return { ...task, error: e.message, success: false };
                     }
+                });
 
-                    const fetchPromises = tickerData.map(item => 
-                        fetchTickerData(item.ticker, provider, apiKey)
-                            .then(data => ({ ticker: item.ticker, trigger: item.trigger, data, success: true }))
-                            .catch(err => ({ ticker: item.ticker, trigger: item.trigger, error: err.message, success: false }))
-                    );
+                const results = await Promise.all(promises);
+                const endTime = performance.now();
+                const fetchTime = ((endTime - startTime) / 1000).toFixed(2);
 
-                    const results = await Promise.all(fetchPromises);
-                    const endTime = performance.now();
-                    const fetchTime = ((endTime - startTime) / 1000).toFixed(2);
+                results.forEach(res => {
+                    if (res.success) renderCard(res, riskVal, slippageVal, container);
+                    else renderError(res, container);
+                });
 
-                    results.forEach(result => {
-                        if (result.success) {
-                            createResultCard(result.ticker, result.data, riskVal, result.trigger, container);
-                        } else {
-                            createErrorCard(result.ticker, result.error, container);
-                        }
-                    });
+                speakResults(results);
 
-                    const perfDiv = document.createElement('div');
-                    perfDiv.className = 'text-center text-green-400 text-sm font-bold bg-green-900/20 py-2 rounded-lg';
-                    perfDiv.innerHTML = `⚡ Fetched ${results.length} ticker(s) in ${fetchTime}s via ${cfg.name}`;
-                    container.appendChild(perfDiv);
+                if (isFocusMode) {
+                    const cards = container.querySelectorAll('.status-wait');
+                    cards.forEach(card => card.style.display = 'none');
                 }
-            } catch (err) {
-                console.error(err);
-                errorMsg.innerText = "Error: " + err.message;
-                errorMsg.classList.remove('hidden', 'bg-green-900/20', 'text-green-400');
-                errorMsg.classList.add('bg-red-900/20', 'text-red-400');
+
+                const metricDiv = document.createElement('div');
+                metricDiv.className = 'text-center text-[10px] text-gray-500 font-mono mt-4';
+                metricDiv.innerText = `Fetched ${results.length} tickers in ${fetchTime}s`;
+                container.appendChild(metricDiv);
+
+            } catch (e) {
+                errorMsg.innerText = "Critical Error: " + e.message;
+                errorMsg.classList.remove('hidden');
             } finally {
-                btn.innerHTML = originalBtnText;
+                btn.innerText = 'CALCULATE';
             }
         }
 
-        function buildResultCardHTML(ticker, data, riskAmount, triggerPrice) {
-            const { c: current, h: high, l: low, pc: prevClose } = data;
+        function renderCard(item, risk, slippage, container) {
+            const { c, h, l, pc } = item.data;
+            const { ticker, trigger } = item;
+            
+            const isGreenDay = c > pc;
+            let setupType = isGreenDay ? "LONG" : "SHORT";
+            let typeColor = isGreenDay ? "text-emerald-400" : "text-rose-400";
+            let stopPrice = isGreenDay ? (l - 0.01) : (h + 0.01);
+            
+            let riskPerShare = isGreenDay ? (c - stopPrice) : (stopPrice - c);
+            riskPerShare += slippage; 
 
-            const longStopPrice = low - 0.01;
-            const shortStopPrice = high + 0.01;
-
-            const riskPerShareLong = current - longStopPrice;
-            let sharesLong = 0;
-            if (riskPerShareLong > 0 && Number.isFinite(riskPerShareLong)) {
-                sharesLong = Math.floor(riskAmount / riskPerShareLong);
+            let shares = 0;
+            if (riskPerShare > 0) shares = Math.floor(risk / riskPerShare);
+            
+            let statusClass = "status-wait"; 
+            if (trigger) {
+                if (isGreenDay && c >= trigger) statusClass = "status-active-long";
+                else if (!isGreenDay && c <= trigger) statusClass = "status-active-short";
             } else {
-                sharesLong = "N/A";
+                statusClass = "glass-card"; 
             }
 
-            const riskPerShareShort = shortStopPrice - current;
-            let sharesShort = 0;
-            if (riskPerShareShort > 0 && Number.isFinite(riskPerShareShort)) {
-                sharesShort = Math.floor(riskAmount / riskPerShareShort);
-            } else {
-                sharesShort = "N/A";
-            }
-
-            const isUpDay = current > prevClose;
-            const isDownDay = current < prevClose;
-            const changePercent = prevClose ? ((current - prevClose) / prevClose * 100).toFixed(2) : "0.00";
-            const changeColor = isUpDay ? 'text-green-400' : 'text-red-400';
-            const changeSymbol = isUpDay ? '▲' : '▼';
-
-            let longTriggerMet = false;
-            let shortTriggerMet = false;
-            let triggerDisplay = '';
-            let notTriggered = false;
-
-            if (triggerPrice !== null && !isNaN(triggerPrice)) {
-                if (isUpDay && current > triggerPrice) {
-                    longTriggerMet = true;
-                    triggerDisplay = `<div class="text-center mt-2 text-green-400 text-xs font-bold">✓ LONG TRIGGER MET (Above $${triggerPrice.toFixed(2)})</div>`;
-                } else if (isDownDay && current < triggerPrice) {
-                    shortTriggerMet = true;
-                    triggerDisplay = `<div class="text-center mt-2 text-red-400 text-xs font-bold">✓ SHORT TRIGGER MET (Below $${triggerPrice.toFixed(2)})</div>`;
-                } else {
-                    notTriggered = true;
-                    if (isUpDay) {
-                        triggerDisplay = `<div class="text-center mt-2 text-gray-500 text-xs font-bold">⚠ LONG Trigger Not Met (Need >${triggerPrice.toFixed(2)}, at ${current.toFixed(2)})</div>`;
-                    } else if (isDownDay) {
-                        triggerDisplay = `<div class="text-center mt-2 text-gray-500 text-xs font-bold">⚠ SHORT Trigger Not Met (Need <${triggerPrice.toFixed(2)}, at ${current.toFixed(2)})</div>`;
-                    } else {
-                        triggerDisplay = `<div class="text-center mt-2 text-yellow-400 text-xs font-bold">⚠ Flat on Day (Trigger: ${triggerPrice.toFixed(2)})</div>`;
-                    }
-                }
-            }
-
-            const longClasses = longTriggerMet ? 'trigger-met' : (shortTriggerMet || notTriggered ? 'not-triggered' : '');
-            const shortClasses = shortTriggerMet ? 'trigger-met-short' : (longTriggerMet || notTriggered ? 'not-triggered' : '');
-            const longBadge = longTriggerMet ? '<div class="absolute top-2 right-2 bg-green-500 text-white text-[10px] font-black px-2 py-1 rounded-full z-20">✓</div>' : '';
-            const shortBadge = shortTriggerMet ? '<div class="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-full z-20">✓</div>' : '';
-
-            return `
-                <div class="flex justify-between items-start border-b border-white/10 pb-3 mb-4">
-                    <div>
-                        <h2 class="text-3xl font-black text-white tracking-tight">${ticker}</h2>
-                        <div class="text-gray-400 text-xs font-bold mt-1">RISK: $${riskAmount.toLocaleString()}</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-2xl font-bold text-blue-400">$${Number.isFinite(current) ? current.toFixed(2) : '0.00'}</div>
-                        <div class="text-[10px] ${changeColor} font-mono mt-1 font-bold">
-                            ${changeSymbol} ${Math.abs(changePercent)}%
+            const changePct = ((c - pc) / pc * 100).toFixed(2);
+            
+            const html = `
+                <div class="glass-card rounded-xl p-5 animate-fade-in ${statusClass}">
+                    <div class="flex justify-between items-end mb-2 pb-2 border-b border-white/5">
+                        <div class="text-left">
+                            <h2 class="text-3xl font-black text-white tracking-tight leading-none">${ticker}</h2>
+                            <div class="text-sm font-black ${typeColor} mt-1 leading-none">${setupType}</div>
                         </div>
-                        <div class="text-[10px] text-gray-500 font-mono">
-                            H: <span class="text-gray-300">${Number.isFinite(high) ? high.toFixed(2) : '0.00'}</span> / L: <span class="text-gray-300">${Number.isFinite(low) ? low.toFixed(2) : '0.00'}</span>
+                        
+                        ${trigger ? `<div class="text-[12px] font-mono font-bold text-gray-400 pb-1">Trigger: $${trigger.toFixed(2)}</div>` : '<div></div>'}
+                        
+                        <div class="text-right">
+                            <div class="text-2xl font-bold text-blue-400 leading-none">$${c.toFixed(2)}</div>
+                            <div class="text-[10px] ${isGreenDay ? 'text-green-400' : 'text-red-400'} font-bold font-mono mt-1">
+                                ${changePct}%
+                            </div>
                         </div>
                     </div>
-                </div>
-                ${triggerDisplay}
-                <div class="grid grid-cols-2 gap-4 mt-4">
-                    <div class="bg-emerald-900/20 border border-emerald-500/20 rounded-lg p-3 text-center group hover:bg-emerald-900/30 transition-colors relative ${longClasses}">
-                        ${longBadge}
-                        <div class="text-emerald-500 text-[10px] font-black uppercase tracking-widest mb-1">LONG SETUP</div>
-                        <div class="text-3xl font-black text-white font-mono">${typeof sharesLong === 'number' ? sharesLong.toLocaleString() : sharesLong}</div>
-                        <div class="text-[10px] text-emerald-200/50 uppercase font-bold tracking-wider mb-2">Shares</div>
-                        <div class="bg-slate-900/50 rounded py-1 px-2 inline-block border border-white/5">
-                            <span class="text-gray-500 text-[10px] font-bold mr-1">STOP:</span>
-                            <span class="text-emerald-400 font-mono font-bold text-sm">${Number.isFinite(longStopPrice) ? longStopPrice.toFixed(2) : '0.00'}</span>
-                        </div>
+                    
+                    <div class="text-right text-[10px] text-gray-500 font-mono -mt-2 mb-3">
+                         H: <span class="text-gray-400">${h.toFixed(2)}</span> L: <span class="text-gray-400">${l.toFixed(2)}</span>
                     </div>
-                    <div class="bg-rose-900/20 border border-rose-500/20 rounded-lg p-3 text-center group hover:bg-rose-900/30 transition-colors relative ${shortClasses}">
-                        ${shortBadge}
-                        <div class="text-rose-500 text-[10px] font-black uppercase tracking-widest mb-1">SHORT SETUP</div>
-                        <div class="text-3xl font-black text-white font-mono">${typeof sharesShort === 'number' ? sharesShort.toLocaleString() : sharesShort}</div>
-                        <div class="text-[10px] text-rose-200/50 uppercase font-bold tracking-wider mb-2">Shares</div>
-                        <div class="bg-slate-900/50 rounded py-1 px-2 inline-block border border-white/5">
-                            <span class="text-gray-500 text-[10px] font-bold mr-1">STOP:</span>
-                            <span class="text-rose-400 font-mono font-bold text-sm">${Number.isFinite(shortStopPrice) ? shortStopPrice.toFixed(2) : '0.00'}</span>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-900/40 rounded p-2 text-center border border-white/5 copy-hover transition-colors group" onclick="copyToClipboard('${shares}', this)">
+                            <div class="text-[9px] text-gray-500 uppercase font-bold group-hover:text-blue-300">Shares (Click to Copy)</div>
+                            <div class="text-3xl font-mono font-black text-white relative">
+                                <span class="share-val">${shares.toLocaleString()}</span>
+                                <span class="copy-msg absolute inset-0 text-green-400 text-sm flex items-center justify-center opacity-0">COPIED!</span>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/20 rounded p-2 text-center border border-white/5">
+                            <div class="text-[9px] text-gray-600 uppercase font-bold">Stop</div>
+                            <div class="text-xl font-mono font-bold text-red-400/80">${stopPrice.toFixed(2)}</div>
                         </div>
                     </div>
                 </div>
             `;
-        }
-
-        function createResultCard(ticker, data, riskAmount, triggerPrice, container, wsMode=false) {
-            const card = document.createElement('div');
-            card.className = 'glass-card rounded-xl p-5 animate-fade-in ring-1 ring-white/10';
-            card.setAttribute('data-ticker', ticker.toUpperCase());
-            card.innerHTML = buildResultCardHTML(ticker, data, riskAmount, triggerPrice);
-            container.appendChild(card);
-        }
-
-        function createErrorCard(ticker, error, container) {
-            const cardHTML = `
-                <div class="bg-red-900/20 border border-red-500/30 rounded-xl p-4 animate-fade-in flex justify-between items-center">
-                    <div>
-                        <h2 class="text-xl font-black text-red-400 tracking-tight">${ticker}</h2>
-                        <p class="text-xs text-red-300 mt-1">Fetch Error</p>
-                    </div>
-                    <div class="text-xs bg-red-900/50 px-3 py-1 rounded text-red-200 border border-red-500/20">
-                        ${error}
-                    </div>
-                </div>
-            `;
+            
             const div = document.createElement('div');
-            div.innerHTML = cardHTML;
+            div.innerHTML = html;
             container.appendChild(div);
         }
 
-        document.querySelectorAll('input').forEach(input => {
-            input.addEventListener('keydown', (e) => {
-                if(e.key === 'Enter') calculateAll();
+        function copyToClipboard(text, element) {
+            const cleanText = text.replace(/,/g, '');
+            navigator.clipboard.writeText(cleanText).then(() => {
+                const valSpan = element.querySelector('.share-val');
+                const msgSpan = element.querySelector('.copy-msg');
+                valSpan.classList.add('opacity-0');
+                msgSpan.classList.remove('opacity-0');
+                msgSpan.classList.add('copy-feedback');
+                setTimeout(() => {
+                    valSpan.classList.remove('opacity-0');
+                    msgSpan.classList.add('opacity-0');
+                    msgSpan.classList.remove('copy-feedback');
+                }, 1000);
             });
-        });
+        }
+
+        function renderError(item, container) {
+            const div = document.createElement('div');
+            div.className = "bg-red-900/20 border border-red-500/30 rounded-xl p-4 flex justify-between items-center";
+            div.innerHTML = `
+                <div class="font-bold text-red-400">${item.ticker}</div>
+                <div class="text-xs text-red-300">${item.error}</div>
+            `;
+            container.appendChild(div);
+        }
+
+        loadSettings();
     </script>
 </body>
 </html>
