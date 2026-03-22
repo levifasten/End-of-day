@@ -253,7 +253,7 @@
             finnhub: { name: 'Finnhub', storageKey: 'finnhub_key', type: 'rest', needsKey: true },
             twelvedata: { name: 'Twelve Data', storageKey: 'twelvedata_key', type: 'rest', needsKey: true },
             stockdata: { name: 'StockData.org', storageKey: 'stockdata_key', type: 'rest', needsKey: true },
-            realtimefinance: { name: 'RealtimeFinance.io', storageKey: null, type: 'websocket', needsKey: false }
+            realtimefinance: { name: 'RealtimeFinance', storageKey: null, type: 'websocket', needsKey: false }
         };
 
         let realtimeSocket = null;
@@ -266,7 +266,36 @@
         function saveLiveUpdateSetting() {
             liveUpdateEnabled = document.getElementById('liveUpdateSetting').checked;
             localStorage.setItem('liveUpdateEnabled', liveUpdateEnabled ? 'true' : 'false');
+            updateTopStatus();
         }
+
+        function updateTopStatus() {
+            const provider = document.getElementById('apiProvider').value;
+            const ind = document.getElementById('liveStatusIndicator');
+            const txt = document.getElementById('liveStatusText');
+            const ping = document.getElementById('liveStatusPing');
+            const dot = document.getElementById('liveStatusDot');
+
+            if (provider === 'realtimefinance') {
+                ind.classList.remove('hidden');
+                ind.classList.add('flex');
+                if (liveUpdateEnabled) {
+                    txt.innerText = 'LIVE';
+                    txt.className = 'text-emerald-400 uppercase';
+                    ping.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75';
+                    dot.className = 'relative inline-flex rounded-full h-2 w-2 bg-emerald-500';
+                } else {
+                    txt.innerText = 'MANUAL';
+                    txt.className = 'text-amber-400 uppercase';
+                    ping.className = 'hidden';
+                    dot.className = 'relative inline-flex rounded-full h-2 w-2 bg-amber-500';
+                }
+            } else {
+                ind.classList.add('hidden');
+                ind.classList.remove('flex');
+            }
+        }
+
 
         let isFocusMode = false;
         let isVoiceEnabled = false;
@@ -381,6 +410,7 @@
                 apiInput.placeholder = 'No API key needed';
                 apiInput.value = '';
             }
+            updateTopStatus();
         }
 
         function saveKey() {
@@ -638,28 +668,40 @@
                     renderRealtimeSnapshot(container, riskVal, slippageVal);
                 }, 4000); // 4 sec timeout to gather snapshot
             }
+        }&apikey=${apiKey}`);
+                if (!quote.ok) throw new Error("API Error");
+                const d = await quote.json();
+                if (d.code) throw new Error(d.message);
+                return { c: parseFloat(d.close), h: parseFloat(d.high), l: parseFloat(d.low), pc: parseFloat(d.previous_close) };
+            } else {
+                const quote = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`);
+                if (quote.status === 429) throw new Error("Rate Limit");
+                const d = await quote.json();
+                if (d.c === 0 && d.d === null) throw new Error("Invalid");
+                return { c: d.c, h: d.h, l: d.l, pc: d.pc };
+            }
         }
 
         async function calculateAll() {
             const riskVal = parseFloat(document.getElementById('riskValue').value) || 500;
             const slippageVal = parseFloat(document.getElementById('slippageValue').value) || 0;
             const provider = document.getElementById('apiProvider').value;
-            const apiKey = localStorage.getItem(API_CONFIGS[provider].storageKey);
+            const config = API_CONFIGS[provider];
+            const apiKey = config.storageKey ? localStorage.getItem(config.storageKey) : null;
             const container = document.getElementById('resultsContainer');
             const btn = document.getElementById('calcBtn');
             const errorMsg = document.getElementById('errorMsg');
 
-            if (!apiKey) {
+            if (config.needsKey && !apiKey) {
                 errorMsg.innerText = "Please set API Key in Settings.";
                 errorMsg.classList.remove('hidden');
                 document.getElementById('settingsPanel').classList.remove('hidden');
                 return;
             }
-            
+
             const inputs = Array.from(document.querySelectorAll('.ticker-input'));
             const triggers = Array.from(document.querySelectorAll('.trigger-input'));
-            
-            // Only process visible inputs based on visibleCount
+
             const tasks = [];
             for(let i=0; i<visibleCount; i++) {
                  const ticker = inputs[i].value.trim().toUpperCase();
@@ -672,12 +714,19 @@
             if (tasks.length === 0) return;
 
             errorMsg.classList.add('hidden');
-            btn.innerText = 'FETCHING...';
+            btn.innerText = (provider === 'realtimefinance' && liveUpdateEnabled) ? 'LIVE...' : 'FETCHING...';
             container.innerHTML = '';
-            
+
             const startTime = performance.now();
 
             try {
+                if (provider === 'realtimefinance') {
+                    startRealtimeFinance(tasks, riskVal, slippageVal, container);
+                    return;
+                }
+
+                disconnectRealtimeFinance();
+
                 const promises = tasks.map(async (task) => {
                     try {
                         const data = await fetchTickerData(task.ticker, provider, apiKey);
@@ -712,7 +761,9 @@
                 errorMsg.innerText = "Critical Error: " + e.message;
                 errorMsg.classList.remove('hidden');
             } finally {
-                btn.innerText = 'CALCULATE';
+                if (provider !== 'realtimefinance' || !liveUpdateEnabled) {
+                    btn.innerText = 'CALCULATE';
+                }
             }
         }
 
