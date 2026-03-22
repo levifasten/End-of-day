@@ -133,7 +133,7 @@
                 <div class="space-y-1">
                     <label class="text-[10px] font-bold text-gray-400 uppercase">API Provider</label>
                     <div class="flex flex-col gap-2">
-                        <select id="apiProvider" class="bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 text-sm font-bold">
+                        <select id="apiProvider" class="bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 text-sm font-bold" onchange="updateApiKeyInput()">
                             <option value="finnhub">Finnhub (REST)</option>
                             <option value="twelvedata">Twelve Data (REST)</option>
                             <option value="stockdata">StockData.org (REST)</option>
@@ -256,6 +256,10 @@
             realtimefinance: { name: 'RealtimeFinance', storageKey: null, type: 'websocket', needsKey: false }
         };
 
+        let isFocusMode = false;
+        let isVoiceEnabled = false;
+        let visibleCount = 2; // Default 2 tickers
+
         let realtimeSocket = null;
         let realtimeTasks = [];
         let realtimeQuotes = {};
@@ -275,6 +279,8 @@
             const txt = document.getElementById('liveStatusText');
             const ping = document.getElementById('liveStatusPing');
             const dot = document.getElementById('liveStatusDot');
+
+            if (!ind) return; // safety
 
             if (provider === 'realtimefinance') {
                 ind.classList.remove('hidden');
@@ -296,10 +302,6 @@
             }
         }
 
-
-        let isFocusMode = false;
-        let isVoiceEnabled = false;
-        let visibleCount = 2; // Default 2 tickers
 
         function loadSettings() {
             const savedRisk = localStorage.getItem('riskValue');
@@ -667,18 +669,6 @@
                     disconnectRealtimeFinance();
                     renderRealtimeSnapshot(container, riskVal, slippageVal);
                 }, 4000); // 4 sec timeout to gather snapshot
-            }
-        }&apikey=${apiKey}`);
-                if (!quote.ok) throw new Error("API Error");
-                const d = await quote.json();
-                if (d.code) throw new Error(d.message);
-                return { c: parseFloat(d.close), h: parseFloat(d.high), l: parseFloat(d.low), pc: parseFloat(d.previous_close) };
-            } else {
-                const quote = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${apiKey}`);
-                if (quote.status === 429) throw new Error("Rate Limit");
-                const d = await quote.json();
-                if (d.c === 0 && d.d === null) throw new Error("Invalid");
-                return { c: d.c, h: d.h, l: d.l, pc: d.pc };
             }
         }
 
