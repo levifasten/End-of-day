@@ -133,11 +133,11 @@
                 <div class="space-y-1">
                     <label class="text-[10px] font-bold text-gray-400 uppercase">API Provider</label>
                     <div class="flex flex-col gap-2">
-                        <select id="apiProvider" class="bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 text-sm font-bold" onchange="updateApiKeyInput()">
+                        <select id="apiProvider" class="bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 text-sm font-bold">
                             <option value="finnhub">Finnhub (REST)</option>
                             <option value="twelvedata">Twelve Data (REST)</option>
                             <option value="stockdata">StockData.org (REST)</option>
-                            <option value="realtimefinance">RealtimeFinance (WebSocket)</option>
+                            <option value="finnhub_ws">Finnhub (WebSocket)</option>
                         </select>
                         <div class="flex gap-2">
                             <input type="password" id="apiKeyInput" placeholder="Enter API Key" class="w-full bg-slate-800 text-white border border-slate-600 rounded px-3 py-2 text-sm">
@@ -156,7 +156,7 @@
                         <label class="text-[10px] font-bold text-gray-400 uppercase">Interface</label>
                         <div class="flex flex-col gap-2 pt-1">
                             <label class="flex items-center gap-2 cursor-pointer">
-                                <label class="flex items-center gap-2 cursor-pointer mb-2">
+                                <label id="liveUpdateContainer" class="flex items-center gap-2 cursor-pointer mb-2 transition-opacity">
                                 <input type="checkbox" id="liveUpdateSetting" class="custom-checkbox" onchange="saveLiveUpdateSetting()">
                                 <span class="text-xs text-gray-300">Live Auto-Update (WebSocket)</span>
                             </label>
@@ -250,15 +250,10 @@
 
     <script>
         const API_CONFIGS = {
-            finnhub: { name: 'Finnhub', storageKey: 'finnhub_key', type: 'rest', needsKey: true },
-            twelvedata: { name: 'Twelve Data', storageKey: 'twelvedata_key', type: 'rest', needsKey: true },
-            stockdata: { name: 'StockData.org', storageKey: 'stockdata_key', type: 'rest', needsKey: true },
-            realtimefinance: { name: 'RealtimeFinance', storageKey: null, type: 'websocket', needsKey: false }
+            finnhub: { name: 'Finnhub', storageKey: 'finnhub_key', needsKey: true, supportsWs: true },
+            twelvedata: { name: 'Twelve Data', storageKey: 'twelvedata_key', needsKey: true, supportsWs: true },
+            stockdata: { name: 'StockData.org', storageKey: 'stockdata_key', needsKey: true, supportsWs: false }
         };
-
-        let isFocusMode = false;
-        let isVoiceEnabled = false;
-        let visibleCount = 2; // Default 2 tickers
 
         let realtimeSocket = null;
         let realtimeTasks = [];
@@ -280,9 +275,7 @@
             const ping = document.getElementById('liveStatusPing');
             const dot = document.getElementById('liveStatusDot');
 
-            if (!ind) return; // safety
-
-            if (provider === 'realtimefinance') {
+            if (provider === 'finnhub_ws') {
                 ind.classList.remove('hidden');
                 ind.classList.add('flex');
                 if (liveUpdateEnabled) {
@@ -302,6 +295,10 @@
             }
         }
 
+
+        let isFocusMode = false;
+        let isVoiceEnabled = false;
+        let visibleCount = 2; // Default 2 tickers
 
         function loadSettings() {
             const savedRisk = localStorage.getItem('riskValue');
@@ -411,6 +408,14 @@
                 apiInput.disabled = true;
                 apiInput.placeholder = 'No API key needed';
                 apiInput.value = '';
+            }
+
+            const liveContainer = document.getElementById('liveUpdateContainer');
+            if (config.supportsWs) {
+                liveContainer.style.display = 'flex';
+            } else {
+                liveContainer.style.display = 'none';
+                if (typeof disconnectWebSocket === 'function') disconnectWebSocket();
             }
             updateTopStatus();
         }
@@ -581,11 +586,12 @@
             throw new Error("Unknown provider");
         }
 
-        function disconnectRealtimeFinance() {
+        function disconnectWebSocket() {
             if (realtimeSocket) {
                 try { realtimeSocket.close(); } catch (e) {}
             }
             realtimeSocket = null;
+            updateTopStatus();
         }
 
         function renderRealtimeSnapshot(container, riskVal, slippageVal) {
@@ -605,73 +611,108 @@
                 const cards = container.querySelectorAll('.status-wait');
                 cards.forEach(card => card.style.display = 'none');
             }
-
-            const metricDiv = document.createElement('div');
-            metricDiv.className = 'text-center text-[10px] text-gray-500 font-mono mt-4';
-            metricDiv.innerText = liveUpdateEnabled
-                ? `Live WebSocket active • ${results.filter(r => r.success).length}/${results.length} quotes`
-                : `Manual WebSocket snapshot • ${results.filter(r => r.success).length}/${results.length} quotes`;
-            container.appendChild(metricDiv);
         }
 
-        function startRealtimeFinance(tasks, riskVal, slippageVal, container) {
-            disconnectRealtimeFinance();
+        async function startWebSocketStream(provider, apiKey, tasks, riskVal, slippageVal, container) {
+            disconnectWebSocket();
             realtimeTasks = tasks.map(t => ({ ...t, ticker: t.ticker.toUpperCase() }));
             realtimeQuotes = {};
 
+            // 1. Fetch Baseline Data via REST (Need HOD, LOD, and PrevClose for logic to work)
             try {
-                realtimeSocket = new WebSocket('wss://ws.realtimefinance.io');
+                const promises = realtimeTasks.map(t => fetchTickerData(t.ticker, provider, apiKey));
+                const results = await Promise.all(promises);
+                realtimeTasks.forEach((t, idx) => {
+                    realtimeQuotes[t.ticker] = results[idx];
+                });
+                renderRealtimeSnapshot(container, riskVal, slippageVal);
+            } catch (e) {
+                console.warn("Baseline REST fetch failed before WS:", e);
+                renderError({ticker: "System", error: "Failed to fetch baseline data"}, container);
+                return;
+            }
+
+            // 2. Open WebSocket
+            try {
+                if (provider === 'finnhub') {
+                    realtimeSocket = new WebSocket(`wss://ws.finnhub.io?token=${apiKey}`);
+                } else if (provider === 'twelvedata') {
+                    realtimeSocket = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${apiKey}`);
+                } else {
+                    return;
+                }
             } catch (e) {
                 renderError({ticker: "WebSocket", error: "Connection Failed"}, container);
                 return;
             }
 
             realtimeSocket.onopen = () => {
-                realtimeSocket.send(JSON.stringify({
-                    symbols: realtimeTasks.map(t => t.ticker)
-                }));
+                updateTopStatus();
+                if (provider === 'finnhub') {
+                    realtimeTasks.forEach(t => {
+                        realtimeSocket.send(JSON.stringify({'type':'subscribe', 'symbol': t.ticker}));
+                    });
+                } else if (provider === 'twelvedata') {
+                    realtimeSocket.send(JSON.stringify({
+                        "action": "subscribe",
+                        "params": {
+                            "symbols": realtimeTasks.map(t => t.ticker).join(',')
+                        }
+                    }));
+                }
             };
 
             realtimeSocket.onmessage = (event) => {
                 try {
-                    const msg = JSON.parse(event.data);
-                    if (!msg || !msg.symbol || msg.price == null) return;
+                    const response = JSON.parse(event.data);
 
-                    const ticker = String(msg.symbol).toUpperCase();
-                    const price = Number(msg.price);
-                    if (!Number.isFinite(price)) return;
+                    if (provider === 'finnhub') {
+                        if (response.type !== 'trade' || !response.data) return;
+                        response.data.forEach(trade => {
+                            const ticker = String(trade.s).toUpperCase();
+                            const price = Number(trade.p);
+                            if (!Number.isFinite(price) || !realtimeQuotes[ticker]) return;
 
-                    const prev = realtimeQuotes[ticker];
-                    realtimeQuotes[ticker] = {
-                        c: price,
-                        h: prev ? Math.max(prev.h, price) : price,
-                        l: prev ? Math.min(prev.l, price) : price,
-                        pc: prev ? prev.pc : price
-                    };
+                            const prev = realtimeQuotes[ticker];
+                            realtimeQuotes[ticker] = {
+                                c: price,
+                                h: Math.max(prev.h, price),
+                                l: Math.min(prev.l, price),
+                                pc: prev.pc
+                            };
+                        });
+                    } 
+                    else if (provider === 'twelvedata') {
+                        if (response.event !== 'price') return;
+                        const ticker = String(response.symbol).toUpperCase();
+                        const price = Number(response.price);
+                        if (!Number.isFinite(price) || !realtimeQuotes[ticker]) return;
+
+                        const prev = realtimeQuotes[ticker];
+                        realtimeQuotes[ticker] = {
+                            c: price,
+                            h: Math.max(prev.h, price),
+                            l: Math.min(prev.l, price),
+                            pc: prev.pc
+                        };
+                    }
 
                     renderRealtimeSnapshot(container, riskVal, slippageVal);
 
-                    if (!liveUpdateEnabled) {
-                        const gotAll = realtimeTasks.every(t => realtimeQuotes[t.ticker]);
-                        if (gotAll) disconnectRealtimeFinance();
-                    }
                 } catch (err) {}
             };
 
             realtimeSocket.onerror = () => {
                 const errorMsg = document.getElementById('errorMsg');
-                errorMsg.innerText = 'RealtimeFinance WebSocket failed.';
+                errorMsg.innerText = 'WebSocket connection failed.';
                 errorMsg.classList.remove('hidden');
+                updateTopStatus();
             };
 
-            if (!liveUpdateEnabled) {
-                setTimeout(() => {
-                    disconnectRealtimeFinance();
-                    renderRealtimeSnapshot(container, riskVal, slippageVal);
-                }, 4000); // 4 sec timeout to gather snapshot
+            realtimeSocket.onclose = () => {
+                updateTopStatus();
             }
         }
-
         async function calculateAll() {
             const riskVal = parseFloat(document.getElementById('riskValue').value) || 500;
             const slippageVal = parseFloat(document.getElementById('slippageValue').value) || 0;
